@@ -218,16 +218,22 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 /* controls */
 #controls {
   background: var(--surface); border-top: 1px solid var(--border);
-  padding: 12px 16px; padding-bottom: calc(12px + var(--safe-b));
+  padding: 10px 16px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
   flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;
 }
+
+/* row 1: progress */
 #prog-row { display: flex; align-items: center; gap: 10px; }
 #pg-info { font-size: 11px; color: var(--text-dim); white-space: nowrap; min-width: 48px; }
 #progress-bar-wrap { flex: 1; height: 6px; background: var(--border); border-radius: 3px; cursor: pointer; }
 #progress-bar { height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); border-radius: 3px; width: 0%; transition: width 0.4s; }
-#sentence-info { font-size: 11px; color: var(--text-dim); white-space: nowrap; min-width: 60px; text-align: right; }
+#sentence-info { font-size: 11px; color: var(--text-dim); white-space: nowrap; min-width: 52px; text-align: right; }
 
-#play-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* row 2: playback buttons — centered */
+#play-row {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+}
 .ctrl-btn {
   background: var(--surface2); border: 1px solid var(--border); color: var(--text);
   border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -240,18 +246,40 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .ctrl-btn.lg { width: 64px; height: 64px; background: var(--gold); border-color: var(--gold); color: #000; font-size: 26px; }
 .ctrl-btn.lg:active { background: #a8872f; }
 
+/* row 3: font + speed + timer */
+#settings-row {
+  display: flex; align-items: center; gap: 10px;
+}
+#font-ctrl-bar {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+}
+.font-bar-btn {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  width: 34px; height: 34px; border-radius: 8px; font-size: 14px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.font-bar-btn:active { background: var(--border); }
+#font-slider-bar {
+  -webkit-appearance: none; flex: 1; height: 4px;
+  background: var(--border); border-radius: 2px; outline: none;
+}
+#font-slider-bar::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--gold); cursor: pointer;
+}
 #speed-select {
   background: var(--surface2); border: 1px solid var(--border); color: var(--text);
-  padding: 6px 10px; border-radius: 20px; font-size: 12px; cursor: pointer; outline: none; min-width: 64px;
+  padding: 6px 8px; border-radius: 20px; font-size: 12px; cursor: pointer; outline: none;
+  flex-shrink: 0;
 }
-#page-jump { display: flex; align-items: center; gap: 5px; }
+#page-jump { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
 #page-jump span { font-size: 11px; color: var(--text-dim); }
-#page-input { width: 44px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 5px 4px; border-radius: 8px; font-size: 12px; text-align: center; outline: none; }
+#page-input { width: 40px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 5px 4px; border-radius: 8px; font-size: 12px; text-align: center; outline: none; }
 
-#timer-area { display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0; }
-#timer-display { font-size: 17px; font-variant-numeric: tabular-nums; color: var(--gold); letter-spacing: 0.05em; line-height: 1; }
-#timer-label { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
-#timer-bar-wrap { width: 52px; height: 3px; background: var(--border); border-radius: 2px; }
+#timer-area { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
+#timer-display { font-size: 15px; font-variant-numeric: tabular-nums; color: var(--gold); letter-spacing: 0.05em; line-height: 1; }
+#timer-label { font-size: 9px; color: var(--text-dim); white-space: nowrap; }
+#timer-bar-wrap { width: 44px; height: 3px; background: var(--border); border-radius: 2px; }
 #timer-bar { height: 100%; background: var(--gold); border-radius: 2px; width: 0%; transition: width 1s linear; }
 
 /* desktop */
@@ -331,21 +359,30 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 
   <!-- Controls -->
   <div id="controls">
+    <!-- Row 1: progress -->
     <div id="prog-row">
       <span id="pg-info">— / —</span>
       <div id="progress-bar-wrap" onclick="seekProgress(event)"><div id="progress-bar"></div></div>
       <span id="sentence-info"></span>
     </div>
+
+    <!-- Row 2: playback buttons -->
     <div id="play-row">
-      <div id="page-jump">
-        <span>P</span>
-        <input type="number" id="page-input" min="1" value="1" onkeydown="if(event.key==='Enter')jumpToPage()" onblur="jumpToPage()">
-      </div>
       <button class="ctrl-btn md" id="btn-prev" onclick="prevPage()" disabled>◀</button>
       <button class="ctrl-btn sm" id="btn-stop" onclick="stopSpeech()" disabled>■</button>
       <button class="ctrl-btn lg" id="btn-play" onclick="togglePlay()" disabled>▶</button>
       <button class="ctrl-btn sm" id="btn-step" onclick="stepForward()" disabled>↷</button>
       <button class="ctrl-btn md" id="btn-next" onclick="nextPage()" disabled>▶</button>
+    </div>
+
+    <!-- Row 3: font + speed + page + timer -->
+    <div id="settings-row">
+      <div id="font-ctrl-bar">
+        <button class="font-bar-btn" onclick="adjustFont(-1)">A−</button>
+        <input type="range" id="font-slider-bar" min="13" max="28" value="17"
+               oninput="setFont(this.value)">
+        <button class="font-bar-btn" onclick="adjustFont(1)">A+</button>
+      </div>
       <select id="speed-select" onchange="changeSpeed(this.value)">
         <option value="0.75">0.75×</option>
         <option value="0.9">0.9×</option>
@@ -355,10 +392,15 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
         <option value="1.8">1.8×</option>
         <option value="2">2×</option>
       </select>
+      <div id="page-jump">
+        <span>P</span>
+        <input type="number" id="page-input" min="1" value="1"
+               onkeydown="if(event.key==='Enter')jumpToPage()" onblur="jumpToPage()">
+      </div>
       <div id="timer-area">
         <div id="timer-display">00:00</div>
         <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
-        <span id="timer-label">30min 目標</span>
+        <span id="timer-label">30min</span>
       </div>
     </div>
   </div>
@@ -812,6 +854,7 @@ function setFont(px) {
   const v = parseInt(px);
   document.documentElement.style.setProperty('--font-size', v + 'px');
   document.getElementById('font-slider').value = v;
+  document.getElementById('font-slider-bar').value = v;
   document.getElementById('font-size-display').textContent = v + 'px';
 }
 function adjustFont(d) {
