@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f0f0f">
+<title>有聲書閱讀器</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #242424;
+  --border: #2e2e2e;
+  --gold: #c9a84c;
+  --gold-glow: rgba(201,168,76,0.15);
+  --text: #e8e8e8;
+  --text-dim: #777;
+  --hl: rgba(201,168,76,0.35);
+  --hl-done: rgba(201,168,76,0.12);
+  --radius: 12px;
+  --font-size: 17px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+html, body { height: 100%; overflow: hidden; background: var(--bg); }
+
+body {
+  color: var(--text);
+  font-family: 'PingFang TC', 'Hiragino Sans GB', 'Noto Serif TC', serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOPBAR ── */
+#topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  padding-top: calc(10px + var(--safe-top));
+  flex-shrink: 0;
+  min-height: 52px;
+}
+
+#btn-menu {
+  background: none; border: none;
+  color: var(--gold); font-size: 20px;
+  cursor: pointer; padding: 4px; flex-shrink: 0;
+  line-height: 1;
+}
+
+#book-title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#upload-btn {
+  background: var(--gold);
+  color: #000;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+#file-input { display: none; }
+
+/* ── DRAWER OVERLAY ── */
+#drawer-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+}
+#drawer-overlay.open { display: block; }
+
+/* ── DRAWER ── */
+#drawer {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: min(300px, 85vw);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+}
+#drawer.open { transform: translateX(0); }
+
+#drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  padding-top: calc(16px + var(--safe-top));
+  border-bottom: 1px solid var(--border);
+}
+#drawer-header span { font-size: 13px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+#btn-close-drawer { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; }
+
+/* font size control in drawer */
+#font-control {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#font-control label { font-size: 12px; color: var(--text-dim); }
+#font-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.font-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.font-btn:active { background: var(--border); }
+#font-slider {
+  -webkit-appearance: none;
+  flex: 1; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+#font-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--gold);
+  cursor: pointer;
+}
+#font-size-display {
+  font-size: 12px; color: var(--gold);
+  min-width: 32px; text-align: right;
+}
+
+#toc-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 0;
+}
+#toc-list::-webkit-scrollbar { display: none; }
+
+.toc-item {
+  padding: 12px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-dim);
+  border-left: 2px solid transparent;
+  line-height: 1.5;
+  transition: all 0.15s;
+}
+.toc-item:active { background: var(--surface2); }
+.toc-item.active { color: var(--gold); border-left-color: var(--gold); background: var(--surface2); }
+
+.page-item {
+  padding: 10px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-dim);
+}
+.page-item:active { background: var(--surface2); }
+.page-item.active { color: var(--gold); background: var(--surface2); }
+
+/* ── READER ── */
+#reader {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 28px 20px 20px;
+  font-size: var(--font-size);
+  line-height: 1.95;
+  letter-spacing: 0.04em;
+}
+#reader::-webkit-scrollbar { display: none; }
+
+#page-content {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.sentence { display: inline; }
+.sentence.speaking {
+  background: var(--hl);
+  border-radius: 4px;
+  padding: 1px 3px;
+  box-shadow: 0 0 0 1px rgba(201,168,76,0.3);
+}
+.sentence.done {
+  background: var(--hl-done);
+  border-radius: 4px;
+  padding: 1px 3px;
+}
+
+/* welcome / loading */
+#welcome, #loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  gap: 16px;
+  color: var(--text-dim);
+  text-align: center;
+}
+#welcome .icon { font-size: 52px; line-height: 1; }
+#welcome p { font-size: 15px; line-height: 1.6; }
+#loading { display: none; }
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── BOTTOM CONTROLS ── */
+#controls {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  padding-bottom: calc(12px + var(--safe-bottom));
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* top row: progress */
+#prog-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#pg-info {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  min-width: 48px;
+}
+#progress-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+}
+#progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.4s;
+}
+#sentence-info {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: right;
+}
+
+/* bottom row: playback */
+#play-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ctrl-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.ctrl-btn:active { background: var(--border); transform: scale(0.94); }
+.ctrl-btn:disabled { opacity: 0.25; pointer-events: none; }
+
+.ctrl-btn.sm { width: 38px; height: 38px; font-size: 14px; }
+.ctrl-btn.md { width: 44px; height: 44px; font-size: 16px; }
+.ctrl-btn.lg {
+  width: 54px; height: 54px;
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #000;
+  font-size: 22px;
+}
+.ctrl-btn.lg:active { background: #a8872f; }
+
+#speed-select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  min-width: 64px;
+}
+
+/* timer */
+#timer-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+#timer-display {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+#timer-label { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+#timer-bar-wrap { width: 52px; height: 3px; background: var(--border); border-radius: 2px; }
+#timer-bar { height: 100%; background: var(--gold); border-radius: 2px; width: 0%; transition: width 1s linear; }
+
+/* page jump */
+#page-jump {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+#page-jump span { font-size: 11px; color: var(--text-dim); }
+#page-input {
+  width: 44px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 4px;
+  border-radius: 8px;
+  font-size: 12px;
+  text-align: center;
+  outline: none;
+}
+
+/* ── DESKTOP LAYOUT ── */
+@media (min-width: 700px) {
+  #app-shell {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* sidebar always visible on desktop */
+  #drawer-overlay { display: none !important; }
+  #drawer {
+    position: static;
+    width: 220px;
+    transform: none !important;
+    border-right: 1px solid var(--border);
+    transition: none;
+  }
+  #btn-menu { display: none; }
+
+  #reader { padding: 40px 48px; }
+  .ctrl-btn.lg { width: 52px; height: 52px; font-size: 20px; }
+}
+
+@media (max-width: 699px) {
+  #app-shell { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <button id="btn-menu" onclick="openDrawer()" title="目錄">☰</button>
+  <span id="book-title">請上傳 PDF 電子書</span>
+  <button id="upload-btn" onclick="document.getElementById('file-input').click()">上傳 PDF</button>
+  <input type="file" id="file-input" accept=".pdf">
+</div>
+
+<div id="app-shell">
+
+  <!-- DRAWER OVERLAY (mobile) -->
+  <div id="drawer-overlay" onclick="closeDrawer()"></div>
+
+  <!-- SIDEBAR / DRAWER -->
+  <div id="drawer">
+    <div id="drawer-header">
+      <span>目錄</span>
+      <button id="btn-close-drawer" onclick="closeDrawer()">✕</button>
+    </div>
+
+    <!-- Font size control -->
+    <div id="font-control">
+      <label>字體大小</label>
+      <div id="font-row">
+        <button class="font-btn" onclick="adjustFont(-1)">A−</button>
+        <input type="range" id="font-slider" min="13" max="28" value="17"
+               oninput="setFont(this.value)">
+        <button class="font-btn" onclick="adjustFont(1)">A+</button>
+        <span id="font-size-display">17px</span>
+      </div>
+    </div>
+
+    <div id="toc-list">
+      <div style="padding:16px;font-size:13px;color:var(--text-dim)">載入 PDF 後顯示目錄</div>
+    </div>
+  </div>
+
+  <!-- READER -->
+  <div id="reader">
+    <div id="welcome">
+      <div class="icon">📚</div>
+      <p>上傳你的 PDF 電子書<br>開始閱讀與聆聽</p>
+    </div>
+    <div id="loading">
+      <div class="spinner"></div>
+      <span style="font-size:14px">正在載入書籍…</span>
+    </div>
+    <div id="page-content"></div>
+  </div>
+
+</div><!-- /app-shell -->
+
+<!-- BOTTOM CONTROLS -->
+<div id="controls">
+  <!-- Progress row -->
+  <div id="prog-row">
+    <span id="pg-info">— / —</span>
+    <div id="progress-bar-wrap" onclick="seekProgress(event)">
+      <div id="progress-bar"></div>
+    </div>
+    <span id="sentence-info"></span>
+  </div>
+
+  <!-- Playback row -->
+  <div id="play-row">
+    <div id="page-jump">
+      <span>P</span>
+      <input type="number" id="page-input" min="1" value="1"
+             onkeydown="if(event.key==='Enter')jumpToPage()"
+             onblur="jumpToPage()">
+    </div>
+
+    <button class="ctrl-btn md" id="btn-prev" onclick="prevPage()" disabled title="上一頁">◀</button>
+    <button class="ctrl-btn sm" id="btn-stop" onclick="stopSpeech()" disabled title="停止">■</button>
+    <button class="ctrl-btn lg" id="btn-play" onclick="togglePlay()" disabled title="播放/暫停">▶</button>
+    <button class="ctrl-btn sm" id="btn-step" onclick="stepForward()" disabled title="跳句">↷</button>
+    <button class="ctrl-btn md" id="btn-next" onclick="nextPage()" disabled title="下一頁">▶</button>
+
+    <select id="speed-select" onchange="changeSpeed(this.value)">
+      <option value="0.75">0.75×</option>
+      <option value="0.9">0.9×</option>
+      <option value="1" selected>1×</option>
+      <option value="1.2">1.2×</option>
+      <option value="1.5">1.5×</option>
+      <option value="1.8">1.8×</option>
+      <option value="2">2×</option>
+    </select>
+
+    <div id="timer-area">
+      <div id="timer-display">00:00</div>
+      <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+      <span id="timer-label">30min 目標</span>
+    </div>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── State ──
+let pdfDoc = null, totalPages = 0, currentPage = 1;
+let pageTexts = {}, sentences = [], sentenceIdx = 0;
+let speaking = false, paused = false, utterance = null;
+let selectedVoice = null, voices = [], speed = 1.0;
+let timerSeconds = 0, timerInterval = null;
+const GOAL = 1800; // 30 min
+
+// ── Voices ──
+function loadVoices() {
+  voices = speechSynthesis.getVoices();
+  const zh = voices.filter(v => v.lang.startsWith('zh'));
+  const maleKw = ['male','Male','Ming','Liang','Yu','Zhiyu','Kangkang','Danny','Sinji','Tingting'];
+  let best = null;
+  for (const kw of maleKw) {
+    best = zh.find(v => v.name.includes(kw));
+    if (best) break;
+  }
+  selectedVoice = best || zh[0] || null;
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+// ── Drawer ──
+function openDrawer() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// ── Font size ──
+function setFont(px) {
+  const v = parseInt(px);
+  document.documentElement.style.setProperty('--font-size', v + 'px');
+  document.getElementById('font-slider').value = v;
+  document.getElementById('font-size-display').textContent = v + 'px';
+}
+function adjustFont(delta) {
+  const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size')) || 17;
+  setFont(Math.max(13, Math.min(28, cur + delta)));
+}
+
+// ── File upload ──
+document.getElementById('file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  stopSpeech();
+  showState('loading');
+  document.getElementById('book-title').textContent = file.name.replace(/\.pdf$/i,'');
+  const buf = await file.arrayBuffer();
+  pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+  totalPages = pdfDoc.numPages;
+  document.getElementById('page-input').max = totalPages;
+  pageTexts = {};
+  currentPage = 1;
+
+  const saved = loadProgress(file.name);
+  await buildTOC();
+  await renderPage(saved?.page || 1);
+  if (saved) {
+    timerSeconds = saved.timerSeconds || 0;
+    updateTimer();
+  }
+  showState('content');
+  enableControls(true);
+  closeDrawer();
+});
+
+async function buildTOC() {
+  const list = document.getElementById('toc-list');
+  list.innerHTML = '';
+  try {
+    const outline = await pdfDoc.getOutline();
+    if (outline?.length) {
+      for (const item of outline) {
+        const d = document.createElement('div');
+        d.className = 'toc-item';
+        d.textContent = item.title;
+        if (item.dest) {
+          d.onclick = async () => {
+            const dest = await pdfDoc.getDestination(item.dest);
+            const idx = await pdfDoc.getPageIndex(dest[0]);
+            await renderPage(idx + 1);
+            closeDrawer();
+          };
+        }
+        list.appendChild(d);
+      }
+      return;
+    }
+  } catch {}
+  const step = Math.max(1, Math.floor(totalPages / 30));
+  for (let i = 1; i <= totalPages; i += step) {
+    const d = document.createElement('div');
+    d.className = 'page-item';
+    d.textContent = `第 ${i} 頁`;
+    d.dataset.page = i;
+    d.onclick = () => { renderPage(i); closeDrawer(); };
+    list.appendChild(d);
+  }
+}
+
+// ── Render ──
+async function getPageText(n) {
+  if (pageTexts[n]) return pageTexts[n];
+  const page = await pdfDoc.getPage(n);
+  const c = await page.getTextContent();
+  const text = c.items.map(i => i.str).join('');
+  pageTexts[n] = text;
+  return text;
+}
+
+async function renderPage(n) {
+  if (!pdfDoc || n < 1 || n > totalPages) return;
+  stopSpeech();
+  currentPage = n;
+  document.getElementById('page-input').value = n;
+  document.getElementById('pg-info').textContent = `${n} / ${totalPages}`;
+  document.getElementById('progress-bar').style.width = ((n - 1) / totalPages * 100) + '%';
+
+  document.querySelectorAll('.toc-item,.page-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll(`.page-item[data-page="${n}"]`).forEach(el => el.classList.add('active'));
+
+  document.getElementById('btn-prev').disabled = n <= 1;
+  document.getElementById('btn-next').disabled = n >= totalPages;
+
+  const text = await getPageText(n);
+  sentences = splitSentences(text);
+  sentenceIdx = 0;
+  renderSentences();
+  document.getElementById('reader').scrollTop = 0;
+  saveProgress();
+}
+
+function splitSentences(text) {
+  const cleaned = text.replace(/\r\n|\r/g, '\n').replace(/[ \t]+/g, ' ').trim();
+  const parts = cleaned.split(/(?<=[。！？；…\n])/g).map(s => s.trim()).filter(s => s.length > 0);
+  return parts.length ? parts : (cleaned ? [cleaned] : []);
+}
+
+function renderSentences() {
+  const c = document.getElementById('page-content');
+  c.innerHTML = '';
+  sentences.forEach((s, i) => {
+    const sp = document.createElement('span');
+    sp.className = 'sentence';
+    sp.dataset.idx = i;
+    sp.textContent = s + ' ';
+    c.appendChild(sp);
+  });
+}
+
+function highlightSentence(idx) {
+  document.querySelectorAll('.sentence').forEach((el, i) => {
+    el.classList.toggle('done', i < idx);
+    el.classList.toggle('speaking', i === idx);
+  });
+  const el = document.querySelector(`.sentence[data-idx="${idx}"]`);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  document.getElementById('sentence-info').textContent =
+    sentences.length ? `${idx + 1} / ${sentences.length}` : '';
+}
+
+// ── Speech ──
+function togglePlay() {
+  if (!sentences.length) return;
+  if (speaking && !paused) pauseSpeech();
+  else if (paused) resumeSpeech();
+  else startSpeech(sentenceIdx);
+}
+
+function startSpeech(fromIdx = 0) {
+  sentenceIdx = fromIdx;
+  speakSentence(sentenceIdx);
+}
+
+function speakSentence(idx) {
+  if (idx >= sentences.length) {
+    if (currentPage < totalPages) renderPage(currentPage + 1).then(() => speakSentence(0));
+    else stopSpeech();
+    return;
+  }
+  const text = sentences[idx].trim();
+  if (!text) { speakSentence(idx + 1); return; }
+
+  utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = speed;
+  utterance.pitch = 0.8;
+  utterance.volume = 1;
+  utterance.lang = 'zh-TW';
+  if (selectedVoice) utterance.voice = selectedVoice;
+
+  speaking = true; paused = false;
+  document.getElementById('btn-play').textContent = '⏸';
+  document.getElementById('btn-stop').disabled = false;
+  document.getElementById('btn-step').disabled = false;
+  startTimer();
+  highlightSentence(idx);
+
+  utterance.onend = () => { if (!paused) { sentenceIdx = idx + 1; speakSentence(sentenceIdx); } };
+  utterance.onerror = (e) => { if (e.error !== 'interrupted') { sentenceIdx = idx + 1; speakSentence(sentenceIdx); } };
+  speechSynthesis.speak(utterance);
+}
+
+function pauseSpeech() {
+  speechSynthesis.pause();
+  paused = true;
+  document.getElementById('btn-play').textContent = '▶';
+  stopTimer();
+}
+
+function resumeSpeech() {
+  speechSynthesis.cancel();
+  paused = false;
+  speakSentence(sentenceIdx);
+}
+
+function stopSpeech() {
+  speechSynthesis.cancel();
+  speaking = false; paused = false; utterance = null;
+  document.getElementById('btn-play').textContent = '▶';
+  document.getElementById('btn-stop').disabled = true;
+  document.getElementById('btn-step').disabled = true;
+  stopTimer();
+  document.querySelectorAll('.sentence').forEach(el => el.classList.remove('speaking','done'));
+  document.getElementById('sentence-info').textContent = '';
+}
+
+function stepForward() {
+  const wasPlaying = speaking && !paused;
+  speechSynthesis.cancel();
+  sentenceIdx = Math.min(sentences.length - 1, sentenceIdx + 1);
+  if (wasPlaying) speakSentence(sentenceIdx);
+  else highlightSentence(sentenceIdx);
+}
+
+function changeSpeed(v) {
+  speed = parseFloat(v);
+  if (speaking && !paused) { const i = sentenceIdx; speechSynthesis.cancel(); paused = false; speakSentence(i); }
+}
+
+// ── Navigation ──
+function prevPage() { if (currentPage > 1) renderPage(currentPage - 1); }
+function nextPage() { if (currentPage < totalPages) renderPage(currentPage + 1); }
+function jumpToPage() {
+  const v = parseInt(document.getElementById('page-input').value);
+  if (v >= 1 && v <= totalPages) renderPage(v);
+}
+function seekProgress(e) {
+  if (!totalPages) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  const pg = Math.max(1, Math.min(totalPages, Math.round((e.clientX - r.left) / r.width * totalPages)));
+  renderPage(pg);
+}
+
+// ── Timer ──
+function startTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(() => { timerSeconds++; updateTimer(); saveProgress(); }, 1000);
+}
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+function updateTimer() {
+  const m = String(Math.floor(timerSeconds / 60)).padStart(2,'0');
+  const s = String(timerSeconds % 60).padStart(2,'0');
+  document.getElementById('timer-display').textContent = `${m}:${s}`;
+  const pct = Math.min(100, timerSeconds / GOAL * 100);
+  document.getElementById('timer-bar').style.width = pct + '%';
+  if (timerSeconds >= GOAL) {
+    document.getElementById('timer-display').style.color = '#5dba7e';
+    document.getElementById('timer-label').textContent = '✓ 今日達標！';
+  }
+}
+
+// ── Persistence ──
+function saveProgress() {
+  const title = document.getElementById('book-title').textContent;
+  if (!title || title === '請上傳 PDF 電子書') return;
+  localStorage.setItem('ab_' + title, JSON.stringify({ page: currentPage, totalPages, timerSeconds }));
+}
+function loadProgress(filename) {
+  const title = filename.replace(/\.pdf$/i,'');
+  try { return JSON.parse(localStorage.getItem('ab_' + title)); } catch { return null; }
+}
+
+// ── Swipe (mobile) ──
+let touchStartX = 0;
+document.getElementById('reader').addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].clientX; }, { passive: true });
+document.getElementById('reader').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 60) { if (dx < 0) nextPage(); else prevPage(); }
+}, { passive: true });
+
+// ── Keyboard ──
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowRight') nextPage();
+  if (e.code === 'ArrowLeft') prevPage();
+  if (e.key === '+' || e.key === '=') adjustFont(1);
+  if (e.key === '-') adjustFont(-1);
+});
+
+// ── UI helpers ──
+function showState(state) {
+  document.getElementById('welcome').style.display = state === 'welcome' ? 'flex' : 'none';
+  document.getElementById('loading').style.display = state === 'loading' ? 'flex' : 'none';
+  if (state !== 'content') document.getElementById('page-content').innerHTML = '';
+}
+function enableControls(on) {
+  ['btn-prev','btn-play','btn-next'].forEach(id => {
+    document.getElementById(id).disabled = !on;
+  });
+}
+
+window.addEventListener('beforeunload', () => speechSynthesis.cancel());
+</script>
+</body>
+</html>
