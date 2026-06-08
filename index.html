@@ -218,10 +218,40 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 /* controls */
 #controls {
   background: var(--surface); border-top: 1px solid var(--border);
-  padding: 10px 16px;
-  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  padding: 10px 16px 28px;
+  /* 28px base covers Safari browser bar; adds safe-area on top for PWA/notch */
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
   flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;
 }
+
+/* upload progress overlay */
+#upload-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+  flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+}
+#upload-overlay.show { display: flex; }
+#upload-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 28px 32px; width: min(320px, 85vw);
+  display: flex; flex-direction: column; gap: 16px;
+}
+#upload-title { font-size: 15px; font-weight: 600; color: var(--gold); text-align: center; }
+#upload-steps { display: flex; flex-direction: column; gap: 10px; }
+.upload-step {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--text-dim); transition: color 0.3s;
+}
+.upload-step.active { color: var(--text); }
+.upload-step.done { color: #5dba7e; }
+.step-icon { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 11px;
+  background: var(--border); transition: all 0.3s; }
+.upload-step.active .step-icon { background: var(--gold); color: #000; animation: pulse 1s infinite; }
+.upload-step.done .step-icon { background: #5dba7e; color: #000; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+#upload-bar-wrap { width: 100%; height: 6px; background: var(--border); border-radius: 3px; }
+#upload-bar { height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); border-radius: 3px; width: 0%; transition: width 0.4s; }
 
 /* row 1: progress */
 #prog-row { display: flex; align-items: center; gap: 10px; }
@@ -406,6 +436,25 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
   </div>
 </div>
 
+<!-- upload progress overlay -->
+<div id="upload-overlay">
+  <div id="upload-box">
+    <div id="upload-title">正在新增書籍</div>
+    <div id="upload-steps">
+      <div class="upload-step" id="step-read">
+        <div class="step-icon">1</div><span>讀取檔案</span>
+      </div>
+      <div class="upload-step" id="step-parse">
+        <div class="step-icon">2</div><span>解析 PDF 內容</span>
+      </div>
+      <div class="upload-step" id="step-save">
+        <div class="step-icon">3</div><span>儲存到書庫</span>
+      </div>
+    </div>
+    <div id="upload-bar-wrap"><div id="upload-bar"></div></div>
+  </div>
+</div>
+
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -514,14 +563,57 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
   if (!file) return;
   e.target.value = '';
 
+  // show progress overlay
+  setUploadStep('read');
+  setUploadBar(5);
+  document.getElementById('upload-overlay').classList.add('show');
+
   const id = 'book_' + Date.now();
   const title = file.name.replace(/\.pdf$/i, '');
-  const pdfData = await file.arrayBuffer();
 
-  const book = { id, title, pdfData, lastPage: 1, lastSentence: 0, totalPages: 0, timerSeconds: 0, addedAt: Date.now(), lastOpened: Date.now() };
+  // step 1: read file
+  const pdfData = await file.arrayBuffer();
+  setUploadStep('parse');
+  setUploadBar(35);
+
+  // step 2: parse PDF to get page count
+  let totalPages = 0;
+  try {
+    const loadingTask = pdfjsLib.getDocument({ data: pdfData.slice(0) });
+    loadingTask.onProgress = (p) => {
+      if (p.total) setUploadBar(35 + Math.round((p.loaded / p.total) * 45));
+    };
+    const pdf = await loadingTask.promise;
+    totalPages = pdf.numPages;
+    pdf.destroy();
+  } catch {}
+  setUploadBar(82);
+
+  // step 3: save to IndexedDB
+  setUploadStep('save');
+  setUploadBar(88);
+  const book = { id, title, pdfData, lastPage: 1, lastSentence: 0, totalPages, timerSeconds: 0, addedAt: Date.now(), lastOpened: Date.now() };
   await dbPut(book);
+
+  setUploadStep('done');
+  setUploadBar(100);
+  await new Promise(r => setTimeout(r, 600));
+  document.getElementById('upload-overlay').classList.remove('show');
   openBook(id);
 });
+
+function setUploadStep(step) {
+  const steps = ['read','parse','save'];
+  const idx = steps.indexOf(step);
+  steps.forEach((s, i) => {
+    const el = document.getElementById('step-' + s);
+    el.classList.toggle('done', step === 'done' || i < idx);
+    el.classList.toggle('active', i === idx && step !== 'done');
+  });
+}
+function setUploadBar(pct) {
+  document.getElementById('upload-bar').style.width = pct + '%';
+}
 
 async function deleteBook(e, id) {
   e.stopPropagation();
