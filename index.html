@@ -9,7 +9,7 @@
 <title>有聲書庫</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -1257,7 +1257,7 @@ function initFirebase() {
     if (typeof firebase === 'undefined') { syncEnabled = false; return false; }
     const cfg = JSON.parse(cfgStr);
     if (!firebase.apps.length) firebase.initializeApp(cfg);
-    fbDb = firebase.firestore();
+    fbDb = firebase.database();
     syncEnabled = true;
     updateSyncUI();
     return true;
@@ -1268,16 +1268,13 @@ function initFirebase() {
   }
 }
 
-function sanitizeDocId(title) {
-  // Firestore doc IDs: no /, max 1500 bytes
-  return (title || 'book').replace(/\//g, '_').slice(0, 100);
+function sanitizeKey(title) {
+  // Realtime DB keys: no . # $ [ ] /
+  return (title || 'book').replace(/[.#$\[\]/]/g, '_').slice(0, 100);
 }
 
-function booksCol() {
-  return fbDb.collection('sync').doc(syncKey).collection('books');
-}
-function settingsDoc() {
-  return fbDb.collection('sync').doc(syncKey).collection('settings').doc('tts');
+function syncRef(path) {
+  return fbDb.ref(`sync/${syncKey}/${path}`);
 }
 
 // Debounced push after each save
@@ -1292,7 +1289,7 @@ async function pushProgress() {
   try {
     const book = await dbGet(currentBookId);
     if (!book) return;
-    await booksCol().doc(sanitizeDocId(book.title)).set({
+    await syncRef(`books/${sanitizeKey(book.title)}`).set({
       title: book.title,
       page: currentPage,
       sentence: sentenceIdx,
@@ -1311,24 +1308,24 @@ async function pullProgress(bookId) {
   try {
     const book = await dbGet(bookId);
     if (!book) return null;
-    const doc = await booksCol().doc(sanitizeDocId(book.title)).get();
-    return doc.exists ? doc.data() : null;
+    const snap = await syncRef(`books/${sanitizeKey(book.title)}`).once('value');
+    return snap.val();
   } catch(e) { return null; }
 }
 
 async function pushTtsSettings() {
   if (!syncEnabled || !fbDb || !syncKey) return;
   try {
-    await settingsDoc().set({ edgeTtsUrl, edgeTtsVoice, updatedAt: Date.now() });
+    await syncRef('settings/tts').set({ edgeTtsUrl, edgeTtsVoice, updatedAt: Date.now() });
   } catch(e) {}
 }
 
 async function pullTtsSettings() {
   if (!syncEnabled || !fbDb || !syncKey) return;
   try {
-    const doc = await settingsDoc().get();
-    if (!doc.exists) return;
-    const d = doc.data();
+    const snap = await syncRef('settings/tts').once('value');
+    const d = snap.val();
+    if (!d) return;
     const localTs = parseInt(localStorage.getItem('ttsSettingsTs') || '0');
     if (d.updatedAt > localTs) {
       edgeTtsUrl = d.edgeTtsUrl || '';
