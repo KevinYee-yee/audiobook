@@ -557,6 +557,7 @@ async function renderCoverFromDoc(doc) {
 //  Reader state
 // ══════════════════════════════════════
 let currentBookId = null;
+let currentBlobUrl = null; // 追蹤 object URL 以便釋放記憶體
 let pdfDoc = null, totalPages = 0, currentPage = 1;
 let pageTexts = {}, sentences = [], sentenceIdx = 0;
 let speaking = false, paused = false, utterance = null;
@@ -601,7 +602,10 @@ async function openBook(id) {
   updateTimer();
 
   try {
-    pdfDoc = await pdfjsLib.getDocument({ data: book.pdfData.slice(0) }).promise;
+    // createObjectURL 不複製資料，大幅減少記憶體使用
+    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+    currentBlobUrl = URL.createObjectURL(new Blob([book.pdfData], { type: 'application/pdf' }));
+    pdfDoc = await pdfjsLib.getDocument(currentBlobUrl).promise;
   } catch (e) {
     showReaderState('welcome');
     document.getElementById('reader-welcome').innerHTML =
@@ -642,8 +646,9 @@ async function openBook(id) {
 
 // ── back to library ──
 async function goLibrary() {
-  await saveNow();       // 離開前確保存好進度
+  await saveNow();
   stopSpeech();
+  if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
   showScreen('library');
   renderLibrary();
   currentBookId = null;
