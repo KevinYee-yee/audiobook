@@ -938,7 +938,7 @@ async function getPageText(n) {
 }
 
 async function renderPage(n, startSentence = 0) {
-  if (!pdfDoc || n < 1 || n > totalPages) return;
+  if (n < 1 || n > totalPages) return;
   stopSpeech();
   currentPage = n;
   sentenceIdx = startSentence;
@@ -1221,7 +1221,7 @@ window.addEventListener('beforeunload', () => { clearInterval(speechWatchdog); s
 window.addEventListener('pagehide', () => {
   savePositionSync();
   // 嘗試同步寫 DB（iOS 可能沒時間跑完，但 localStorage 已存）
-  if (currentBookId && pdfDoc) {
+  if (currentBookId) {
     dbGet(currentBookId).then(book => {
       if (!book) return;
       book.lastPage = currentPage;
