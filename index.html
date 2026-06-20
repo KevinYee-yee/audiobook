@@ -8,8 +8,6 @@
 <meta name="theme-color" content="#0f0f0f">
 <title>有聲書庫</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -1245,7 +1243,7 @@ function updateTtsStatus(ok) {
 // ══════════════════════════════════════
 //  Firebase Cloud Sync
 // ══════════════════════════════════════
-let fbDb = null;
+let syncDbUrl = null; // Realtime DB REST URL（從 firebaseConfig 取出）
 let syncKey = localStorage.getItem('syncKey') || '';
 let syncEnabled = false;
 let syncPushTimer = null;
@@ -1254,27 +1252,25 @@ function initFirebase() {
   const cfgStr = localStorage.getItem('firebaseConfig');
   if (!cfgStr || !syncKey) { syncEnabled = false; return false; }
   try {
-    if (typeof firebase === 'undefined') { syncEnabled = false; return false; }
     const cfg = JSON.parse(cfgStr);
-    if (!firebase.apps.length) firebase.initializeApp(cfg);
-    fbDb = firebase.database();
+    if (!cfg.databaseURL) { syncEnabled = false; return false; }
+    syncDbUrl = cfg.databaseURL.replace(/\/$/, '');
     syncEnabled = true;
     updateSyncUI();
     return true;
   } catch(e) {
-    console.warn('Firebase init:', e);
+    console.warn('Sync init:', e);
     syncEnabled = false;
     return false;
   }
 }
 
 function sanitizeKey(title) {
-  // Realtime DB keys: no . # $ [ ] /
   return (title || 'book').replace(/[.#$\[\]/]/g, '_').slice(0, 100);
 }
 
-function syncRef(path) {
-  return fbDb.ref(`sync/${syncKey}/${path}`);
+function syncUrl(path) {
+  return `${syncDbUrl}/sync/${syncKey}/${path}.json`;
 }
 
 // Debounced push after each save
@@ -1285,46 +1281,49 @@ function scheduleSyncProgress() {
 }
 
 async function pushProgress() {
-  if (!syncEnabled || !currentBookId || !fbDb) return;
+  if (!syncEnabled || !currentBookId || !syncDbUrl) return;
   try {
     const book = await dbGet(currentBookId);
     if (!book) return;
-    await syncRef(`books/${sanitizeKey(book.title)}`).set({
-      title: book.title,
-      page: currentPage,
-      sentence: sentenceIdx,
-      totalPages,
-      updatedAt: Date.now()
+    await fetch(syncUrl(`books/${sanitizeKey(book.title)}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: book.title, page: currentPage, sentence: sentenceIdx, totalPages, updatedAt: Date.now() })
     });
     setSyncDot('ok', '已同步 ✓');
   } catch(e) {
     setSyncDot('err', '同步失敗');
-    console.warn('sync push:', e);
   }
 }
 
 async function pullProgress(bookId) {
-  if (!syncEnabled || !fbDb || !syncKey) return null;
+  if (!syncEnabled || !syncDbUrl || !syncKey) return null;
   try {
     const book = await dbGet(bookId);
     if (!book) return null;
-    const snap = await syncRef(`books/${sanitizeKey(book.title)}`).once('value');
-    return snap.val();
+    const r = await fetch(syncUrl(`books/${sanitizeKey(book.title)}`));
+    if (!r.ok) return null;
+    return await r.json();
   } catch(e) { return null; }
 }
 
 async function pushTtsSettings() {
-  if (!syncEnabled || !fbDb || !syncKey) return;
+  if (!syncEnabled || !syncDbUrl || !syncKey) return;
   try {
-    await syncRef('settings/tts').set({ edgeTtsUrl, edgeTtsVoice, updatedAt: Date.now() });
+    await fetch(syncUrl('settings/tts'), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ edgeTtsUrl, edgeTtsVoice, updatedAt: Date.now() })
+    });
   } catch(e) {}
 }
 
 async function pullTtsSettings() {
-  if (!syncEnabled || !fbDb || !syncKey) return;
+  if (!syncEnabled || !syncDbUrl || !syncKey) return;
   try {
-    const snap = await syncRef('settings/tts').once('value');
-    const d = snap.val();
+    const r = await fetch(syncUrl('settings/tts'));
+    if (!r.ok) return;
+    const d = await r.json();
     if (!d) return;
     const localTs = parseInt(localStorage.getItem('ttsSettingsTs') || '0');
     if (d.updatedAt > localTs) {
