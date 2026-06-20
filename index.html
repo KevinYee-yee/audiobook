@@ -637,14 +637,43 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
   if (!file) return;
   e.target.value = '';
 
-  const id = 'book_' + Date.now();
-  const title = file.name.replace(/\.pdf$/i, '');
-  const pdfData = await file.arrayBuffer();
-  const cover = await generateCover(pdfData); // 上傳時就生成書封
+  const addBtn = document.getElementById('add-btn');
+  addBtn.textContent = '解析中…'; addBtn.disabled = true;
 
-  const book = { id, title, pdfData, cover, lastPage: 1, lastSentence: 0, totalPages: 0, timerSeconds: 0, addedAt: Date.now(), lastOpened: Date.now() };
-  await dbPut(book);
-  openBook(id);
+  try {
+    const id = 'book_' + Date.now();
+    const title = file.name.replace(/\.pdf$/i, '');
+    const pdfData = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+    const total = pdf.numPages;
+
+    // 封面
+    const cover = await renderCoverFromDoc(pdf);
+
+    // 全部頁面文字一次提取，不儲存 PDF 二進位（省 10-50 倍空間）
+    const allTexts = {};
+    for (let i = 1; i <= total; i++) {
+      addBtn.textContent = `解析 ${i}/${total}…`;
+      const pg = await pdf.getPage(i);
+      const c = await pg.getTextContent();
+      allTexts[i] = c.items.map(it => it.str).join('');
+      pg.cleanup();
+    }
+
+    const book = {
+      id, title, cover,
+      pageTexts: allTexts,   // 只存文字
+      totalPages: total,
+      lastPage: 1, lastSentence: 0, timerSeconds: 0,
+      addedAt: Date.now(), lastOpened: Date.now()
+    };
+    await dbPut(book);
+    openBook(id);
+  } catch(err) {
+    alert('上傳失敗：' + (err.message || err));
+  } finally {
+    addBtn.textContent = '＋ 新增書籍'; addBtn.disabled = false;
+  }
 });
 
 async function deleteBook(e, id) {
@@ -728,25 +757,46 @@ async function openBook(id) {
   timerSeconds = book.timerSeconds || 0;
   updateTimer();
 
-  try {
-    // createObjectURL 不複製資料，大幅減少記憶體使用
-    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
-    currentBlobUrl = URL.createObjectURL(new Blob([book.pdfData], { type: 'application/pdf' }));
-    pdfDoc = await pdfjsLib.getDocument(currentBlobUrl).promise;
-  } catch (e) {
+  if (book.pageTexts) {
+    // 新格式：文字已提取，直接使用，無需載入 PDF
+    pdfDoc = null;
+    if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
+    totalPages = book.totalPages || Object.keys(book.pageTexts).length;
+    pageTexts = book.pageTexts;
+    document.getElementById('page-input').max = totalPages;
+    buildTOCFromPageCount(totalPages);
+  } else if (book.pdfData) {
+    // 舊格式：從 PDF 載入（舊書相容）
+    try {
+      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = URL.createObjectURL(new Blob([book.pdfData], { type: 'application/pdf' }));
+      pdfDoc = await pdfjsLib.getDocument(currentBlobUrl).promise;
+    } catch (e) {
+      showReaderState('welcome');
+      document.getElementById('reader-welcome').innerHTML =
+        `<div class="icon" style="font-size:40px">⚠️</div><p style="font-size:14px;color:var(--text-dim)">PDF 載入失敗<br><small>${e.message || e}</small></p>`;
+      document.getElementById('reader-welcome').style.display = 'flex';
+      return;
+    }
+    totalPages = pdfDoc.numPages;
+    document.getElementById('page-input').max = totalPages;
+    if (!book.totalPages) { book.totalPages = totalPages; await dbPut(book); }
+    pageTexts = {};
+    await buildTOC();
+    if (!book.cover) {
+      renderCoverFromDoc(pdfDoc).then(async cover => {
+        if (!cover) return;
+        const b = await dbGet(id);
+        if (b && !b.cover) { b.cover = cover; await dbPut(b); renderLibrary(); }
+      });
+    }
+  } else {
     showReaderState('welcome');
     document.getElementById('reader-welcome').innerHTML =
-      `<div class="icon" style="font-size:40px">⚠️</div><p style="font-size:14px;color:var(--text-dim)">PDF 載入失敗<br><small>${e.message || e}</small></p>`;
+      `<div class="icon" style="font-size:40px">⚠️</div><p>書籍資料遺失，請重新上傳</p>`;
     document.getElementById('reader-welcome').style.display = 'flex';
     return;
   }
-  totalPages = pdfDoc.numPages;
-  document.getElementById('page-input').max = totalPages;
-
-  if (!book.totalPages) { book.totalPages = totalPages; await dbPut(book); }
-
-  pageTexts = {};
-  await buildTOC();
 
   // localStorage 備份比 DB 更可靠（iOS 強制關閉也能讀到）
   const pos = getPositionSync(id);
@@ -760,19 +810,6 @@ async function openBook(id) {
     setSyncDot('ok', '已同步 ✓');
   }
   await renderPage(startPage, startSent);
-
-  // 背景補生成書封（直接用已載入的 pdfDoc，不重複佔記憶體）
-  if (!book.cover) {
-    renderCoverFromDoc(pdfDoc).then(async cover => {
-      if (!cover) return;
-      const b = await dbGet(id);
-      if (b && !b.cover) {
-        b.cover = cover;
-        await dbPut(b);
-        renderLibrary(); // 回到書庫時立即顯示
-      }
-    });
-  }
 
   showReaderState('content');
   enableControls(true);
@@ -814,7 +851,7 @@ function getPositionSync(id) {
 
 // ── save progress ──
 async function saveNow() {
-  if (!currentBookId || !pdfDoc) return;
+  if (!currentBookId) return;
   clearTimeout(saveDebounce);
   savePositionSync(); // 同步先存一份
   const book = await dbGet(currentBookId);
@@ -827,7 +864,7 @@ async function saveNow() {
 }
 
 async function saveProgress() {
-  if (!currentBookId || !pdfDoc) return;
+  if (!currentBookId) return;
   clearTimeout(saveDebounce);
   savePositionSync(); // 每次頁面變動都同步存
   saveDebounce = setTimeout(saveNow, 800);
@@ -837,6 +874,20 @@ async function saveProgress() {
 // ══════════════════════════════════════
 //  TOC + Page rendering
 // ══════════════════════════════════════
+function buildTOCFromPageCount(count) {
+  const list = document.getElementById('toc-list');
+  list.innerHTML = '';
+  const step = Math.max(1, Math.floor(count / 30));
+  for (let i = 1; i <= count; i += step) {
+    const d = document.createElement('div');
+    d.className = 'page-item';
+    d.textContent = `第 ${i} 頁`;
+    d.dataset.page = i;
+    d.onclick = () => { renderPage(i, 0); closeDrawer(); };
+    list.appendChild(d);
+  }
+}
+
 async function buildTOC() {
   const list = document.getElementById('toc-list');
   list.innerHTML = '';
@@ -878,7 +929,8 @@ async function buildTOC() {
 }
 
 async function getPageText(n) {
-  if (pageTexts[n]) return pageTexts[n];
+  if (pageTexts[n] !== undefined) return pageTexts[n];
+  if (!pdfDoc) return '';
   const page = await pdfDoc.getPage(n);
   const c = await page.getTextContent();
   pageTexts[n] = c.items.map(i => i.str).join('');
