@@ -650,6 +650,27 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
     // 封面
     const cover = await renderCoverFromDoc(pdf);
 
+    // 提取章節目錄
+    let outline = null;
+    try {
+      const raw = await pdf.getOutline();
+      if (raw?.length) {
+        const chapters = [];
+        for (const item of raw) {
+          try {
+            let dest = item.dest;
+            if (typeof dest === 'string') dest = await pdf.getDestination(dest);
+            if (Array.isArray(dest) && dest[0] != null) {
+              const pageIdx = typeof dest[0] === 'number'
+                ? dest[0] : await pdf.getPageIndex(dest[0]);
+              chapters.push({ title: item.title, page: pageIdx + 1 });
+            }
+          } catch(e) {}
+        }
+        if (chapters.length) outline = chapters;
+      }
+    } catch(e) {}
+
     // 全部頁面文字一次提取，不儲存 PDF 二進位（省 10-50 倍空間）
     const allTexts = {};
     for (let i = 1; i <= total; i++) {
@@ -663,6 +684,7 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
     const book = {
       id, title, cover,
       pageTexts: allTexts,   // 只存文字
+      outline,               // 章節目錄（若 PDF 有提供）
       totalPages: total,
       lastPage: 1, lastSentence: 0, timerSeconds: 0,
       addedAt: Date.now(), lastOpened: Date.now()
@@ -764,7 +786,8 @@ async function openBook(id) {
     totalPages = book.totalPages || Object.keys(book.pageTexts).length;
     pageTexts = book.pageTexts;
     document.getElementById('page-input').max = totalPages;
-    buildTOCFromPageCount(totalPages);
+    if (book.outline?.length) buildTOCFromOutline(book.outline);
+    else buildTOCFromPageCount(totalPages);
   } else if (book.pdfData) {
     // 舊格式：從 PDF 載入（舊書相容）
     try {
@@ -884,6 +907,18 @@ function buildTOCFromPageCount(count) {
     d.textContent = `第 ${i} 頁`;
     d.dataset.page = i;
     d.onclick = () => { renderPage(i, 0); closeDrawer(); };
+    list.appendChild(d);
+  }
+}
+
+function buildTOCFromOutline(outline) {
+  const list = document.getElementById('toc-list');
+  list.innerHTML = '';
+  for (const ch of outline) {
+    const d = document.createElement('div');
+    d.className = 'toc-item';
+    d.textContent = ch.title;
+    d.onclick = () => { renderPage(ch.page, 0); closeDrawer(); };
     list.appendChild(d);
   }
 }
