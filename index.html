@@ -584,7 +584,8 @@ function dbDelete(id) {
 async function initLibrary() {
   try {
     await openDB();
-    renderLibrary();
+    await renderLibrary();
+    pullBooksFromCloud();
   } catch (e) {
     console.error('DB init failed:', e);
     document.getElementById('lib-empty').innerHTML =
@@ -690,6 +691,7 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
       addedAt: Date.now(), lastOpened: Date.now()
     };
     await dbPut(book);
+    pushBookToCloud(book); // 同步到雲端（不阻塞 UI）
     openBook(id);
   } catch(err) {
     alert('上傳失敗：' + (err.message || err));
@@ -701,7 +703,9 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
 async function deleteBook(e, id) {
   e.stopPropagation();
   if (!confirm('確定要刪除這本書嗎？')) return;
+  const book = await dbGet(id);
   await dbDelete(id);
+  if (book) deleteBookFromCloud(book.title);
   renderLibrary();
 }
 
@@ -1426,6 +1430,72 @@ async function pullTtsSettings() {
   } catch(e) {}
 }
 
+// ── Book Cloud Sync ──
+async function pushBookToCloud(book) {
+  if (!syncEnabled || !syncDbUrl || !syncKey) return;
+  const key = sanitizeKey(book.title);
+  try {
+    setSyncDot('ok', '書籍上傳中…');
+    await fetch(syncUrl(`bookdata/${key}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: book.id,
+        title: book.title,
+        cover: book.cover || null,
+        pageTexts: book.pageTexts || {},
+        outline: book.outline || null,
+        totalPages: book.totalPages,
+        addedAt: book.addedAt,
+        syncedAt: Date.now()
+      })
+    });
+    setSyncDot('ok', '書籍已同步 ✓');
+  } catch(e) {
+    setSyncDot('err', '書籍同步失敗');
+  }
+}
+
+async function pullBooksFromCloud() {
+  if (!syncEnabled || !syncDbUrl || !syncKey) return;
+  try {
+    const r = await fetch(syncUrl('bookdata'));
+    if (!r.ok) return;
+    const cloudBooks = await r.json();
+    if (!cloudBooks || typeof cloudBooks !== 'object') return;
+
+    const localBooks = await dbGetAll();
+    const localTitles = new Set(localBooks.map(b => b.title));
+
+    let imported = 0;
+    for (const cloudBook of Object.values(cloudBooks)) {
+      if (!cloudBook?.title || localTitles.has(cloudBook.title)) continue;
+      await dbPut({
+        id: 'book_' + Date.now() + '_' + imported,
+        title: cloudBook.title,
+        cover: cloudBook.cover || null,
+        pageTexts: cloudBook.pageTexts || {},
+        outline: cloudBook.outline || null,
+        totalPages: cloudBook.totalPages || Object.keys(cloudBook.pageTexts || {}).length,
+        addedAt: cloudBook.addedAt || Date.now(),
+        lastPage: 1, lastSentence: 0, timerSeconds: 0, lastOpened: null
+      });
+      imported++;
+    }
+    if (imported > 0) {
+      renderLibrary();
+      setSyncDot('ok', `已匯入 ${imported} 本書 ✓`);
+    }
+  } catch(e) {
+    console.warn('pullBooks:', e);
+  }
+}
+
+function deleteBookFromCloud(title) {
+  if (!syncEnabled || !syncDbUrl || !syncKey) return;
+  fetch(syncUrl(`bookdata/${sanitizeKey(title)}`), { method: 'DELETE' }).catch(() => {});
+}
+
 // ── Sync UI helpers ──
 function setSyncDot(state, text) {
   const dot = document.getElementById('s-dot');
@@ -1536,10 +1606,10 @@ function resetSync() {
 }
 
 // ── INIT ──
-initLibrary();
-initFirebase();
+initFirebase();   // 先建立 syncEnabled / syncDbUrl，initLibrary 內才能拉書
 pullTtsSettings();
 updateSyncUI();
+initLibrary();    // 開 DB → renderLibrary → pullBooksFromCloud
 
 // 初始化 Edge-TTS UI
 document.getElementById('tts-server-input').value = edgeTtsUrl;
