@@ -2225,6 +2225,11 @@ document.getElementById('tts-server-input').value = edgeTtsUrl;
 document.getElementById('tts-voice-select').value = edgeTtsVoice;
 updateTtsStatus(edgeTtsUrl ? null : null);
 
+// VAPID Public Key（GitHub Actions 用）
+if (!localStorage.getItem('vapidPublicKey')) {
+  localStorage.setItem('vapidPublicKey', 'BFWI0aTSjLo-mYzFvgNSWQ5lzUVetwxy1S9umsNhdAEEXBGH85Er3wGY0GqSXCaQVHajBoTRCfjmUXIAuu3iLvI');
+}
+
 // Service Worker 註冊
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/audiobook/sw.js').catch(() => {});
