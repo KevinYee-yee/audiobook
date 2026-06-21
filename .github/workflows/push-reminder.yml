@@ -1,0 +1,23 @@
+name: Daily Reading Reminder
+
+on:
+  schedule:
+    - cron: '0 13 * * *'  # 每天 21:00 台灣時間 (UTC+8 = UTC 13:00)
+  workflow_dispatch:       # 可手動觸發測試
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install web-push
+      - name: Send push notification
+        env:
+          VAPID_PUBLIC: ${{ secrets.VAPID_PUBLIC }}
+          VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_SYNC_KEY: ${{ secrets.FIREBASE_SYNC_KEY }}
+        run: node push-sender.js

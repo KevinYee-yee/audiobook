@@ -327,6 +327,128 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 #s-dot.ing { background: var(--gold); }
 .s-divider { height: 1px; background: var(--border); }
 
+/* ── Stats row ── */
+#lib-stats-row {
+  padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+}
+.streak-badge {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 15px; font-weight: 700; color: var(--gold); flex-shrink: 0;
+}
+.streak-badge.zero { color: var(--text-dim); }
+.stat-sep { width: 1px; height: 28px; background: var(--border); flex-shrink: 0; }
+.stat-pill { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.stat-pill-val { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.stat-pill-lbl { font-size: 9px; color: var(--text-dim); white-space: nowrap; }
+.week-goal-wrap { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.week-goal-row { display: flex; justify-content: space-between; }
+.week-goal-label { font-size: 10px; color: var(--text-dim); }
+.week-goal-bar-bg { height: 4px; background: var(--border); border-radius: 2px; }
+.week-goal-bar { height: 100%; background: var(--gold); border-radius: 2px; transition: width 0.6s; max-width: 100%; }
+.lib-notes-btn {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim);
+  width: 36px; height: 36px; border-radius: 10px; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+/* ── Sentence long-press note popup ── */
+#note-popup {
+  display: none; position: fixed; inset: 0; z-index: 400;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(5px);
+  align-items: flex-end; justify-content: center; padding-bottom: calc(20px + var(--safe-b));
+}
+#note-popup.open { display: flex; }
+#note-popup-box {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px 20px 0 0;
+  padding: 20px 20px calc(20px + var(--safe-b)); width: 100%; max-width: 600px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+#note-popup-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: -8px auto 4px; }
+#note-popup-sentence {
+  font-size: 13px; color: var(--text-dim); background: var(--surface2);
+  padding: 10px 12px; border-radius: 10px; line-height: 1.6;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+#note-popup-textarea {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  padding: 10px 12px; border-radius: 10px; font-size: 15px; outline: none;
+  width: 100%; min-height: 88px; resize: none; font-family: inherit; line-height: 1.6;
+}
+#note-popup-textarea:focus { border-color: var(--gold-dim); }
+.note-popup-actions { display: flex; gap: 8px; }
+.npa-btn {
+  flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); font-size: 14px; cursor: pointer;
+}
+.npa-btn.gold { background: var(--gold); color: #000; border-color: var(--gold); font-weight: 700; }
+.npa-btn.del { color: #e05252; }
+
+/* ── Notes Library Screen ── */
+#screen-notes .notes-topbar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 14px 20px; padding-top: calc(14px + var(--safe-t));
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.notes-back { background: none; border: none; color: var(--gold); font-size: 22px; cursor: pointer; padding: 2px; }
+#notes-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 20px; }
+#notes-body::-webkit-scrollbar { display: none; }
+.note-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 12px; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.note-card:active { border-color: var(--gold-dim); }
+.note-card-meta { font-size: 10px; color: var(--gold); margin-bottom: 5px; display: flex; justify-content: space-between; }
+.note-card-quote {
+  font-size: 12px; color: var(--text-dim); line-height: 1.55; margin-bottom: 8px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.note-card-text { font-size: 14px; color: var(--text); line-height: 1.65; }
+.notes-empty { text-align: center; color: var(--text-dim); padding: 80px 20px; font-size: 15px; line-height: 2; }
+
+/* ── Bookmarks ── */
+.sentence.bookmarked { border-bottom: 1px solid var(--gold-dim); }
+#btn-bookmark { font-size: 16px; }
+#btn-bookmark.on { color: var(--gold); border-color: var(--gold-dim); }
+
+/* ── Completion modal ── */
+#completion-modal {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.88); backdrop-filter: blur(10px);
+  align-items: center; justify-content: center; padding: 24px;
+}
+#completion-modal.open { display: flex; }
+#completion-box {
+  background: var(--surface); border: 1px solid var(--gold-dim); border-radius: 24px;
+  padding: 36px 28px; text-align: center; width: min(360px, 100%);
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+}
+.comp-trophy { font-size: 64px; animation: bounceIn 0.5s; }
+@keyframes bounceIn { 0%{transform:scale(0.5);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+.comp-title { font-size: 20px; font-weight: 700; color: var(--gold); }
+.comp-book { font-size: 13px; color: var(--text-dim); }
+.comp-stats-row { display: flex; gap: 24px; margin: 8px 0; }
+.comp-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.comp-stat-val { font-size: 22px; font-weight: 700; color: var(--text); }
+.comp-stat-lbl { font-size: 10px; color: var(--text-dim); }
+.comp-close {
+  background: var(--gold); color: #000; border: none; padding: 12px 32px;
+  border-radius: 20px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%;
+}
+
+/* ── Notification banner ── */
+#notif-banner {
+  display: none; background: #1a1608; border-bottom: 1px solid var(--gold-dim);
+  padding: 10px 16px; gap: 10px; align-items: center; font-size: 13px; color: var(--text-dim);
+  flex-shrink: 0;
+}
+#notif-banner.show { display: flex; }
+#notif-banner button {
+  background: var(--gold); color: #000; border: none; padding: 6px 14px;
+  border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+}
+
 /* desktop */
 @media (min-width: 700px) {
   #reader-shell { flex: 1; display: flex; overflow: hidden; }
@@ -348,10 +470,33 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
   <div id="lib-topbar">
     <h1>📚 我的書庫</h1>
     <div style="display:flex;align-items:center;gap:8px">
+      <button class="lib-notes-btn" onclick="openNotesScreen()" title="筆記庫">📝</button>
       <button id="lib-sync-btn" onclick="openSyncModal()" title="跨裝置同步">☁</button>
       <button id="add-btn" onclick="document.getElementById('file-input').click()">＋ 新增書籍</button>
     </div>
     <input type="file" id="file-input" accept=".pdf">
+  </div>
+  <!-- Streak + Stats -->
+  <div id="lib-stats-row">
+    <div class="streak-badge" id="streak-badge">🔥 <span id="streak-count">0</span> 天</div>
+    <div class="stat-sep"></div>
+    <div class="stat-pill"><span class="stat-pill-val" id="stat-books">0</span><span class="stat-pill-lbl">本已讀</span></div>
+    <div class="stat-sep"></div>
+    <div class="stat-pill"><span class="stat-pill-val" id="stat-hours">0h</span><span class="stat-pill-lbl">總時數</span></div>
+    <div class="stat-sep"></div>
+    <div class="week-goal-wrap">
+      <div class="week-goal-row">
+        <span class="week-goal-label">本週目標</span>
+        <span class="week-goal-label" id="week-goal-text">0 / 3h</span>
+      </div>
+      <div class="week-goal-bar-bg"><div class="week-goal-bar" id="week-goal-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+  <!-- Notification banner -->
+  <div id="notif-banner">
+    <span>🔔 開啟通知，讓我提醒你每天讀書</span>
+    <button onclick="requestPushPermission()">開啟</button>
+    <button onclick="dismissNotifBanner()" style="background:none;color:var(--text-dim);padding:0;font-size:18px">✕</button>
   </div>
   <div id="lib-body">
     <div id="lib-empty">
@@ -448,6 +593,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
       <button class="ctrl-btn lg" id="btn-play" onclick="togglePlay()" disabled>▶</button>
       <button class="ctrl-btn sm" id="btn-step" onclick="stepForward()" disabled>↷</button>
       <button class="ctrl-btn md" id="btn-next" onclick="nextPage()" disabled>▶</button>
+      <button class="ctrl-btn sm" id="btn-bookmark" onclick="toggleBookmark()" title="書簽" disabled>🔖</button>
       <select id="speed-select" onchange="changeSpeed(this.value)">
         <option value="0.75">0.75×</option>
         <option value="0.9">0.9×</option>
@@ -458,6 +604,46 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
         <option value="2">2×</option>
       </select>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════ NOTES SCREEN ═══════════ -->
+<div class="screen hidden" id="screen-notes">
+  <div class="notes-topbar">
+    <button class="notes-back" onclick="closeNotesScreen()">‹</button>
+    <span style="font-size:16px;font-weight:700;color:var(--gold)">📝 我的筆記</span>
+  </div>
+  <div id="notes-body">
+    <div class="notes-empty" id="notes-empty">還沒有筆記<br><span style="font-size:13px">長按句子即可新增</span></div>
+  </div>
+</div>
+
+<!-- ═══════════ NOTE POPUP ═══════════ -->
+<div id="note-popup" onclick="if(event.target===this)closeNotePopup()">
+  <div id="note-popup-box">
+    <div id="note-popup-handle"></div>
+    <div id="note-popup-sentence"></div>
+    <textarea id="note-popup-textarea" placeholder="寫下你的想法、感受或重點…" rows="4"></textarea>
+    <div class="note-popup-actions">
+      <button class="npa-btn del" id="note-del-btn" onclick="deleteCurrentNote()" style="display:none">刪除</button>
+      <button class="npa-btn" onclick="closeNotePopup()">取消</button>
+      <button class="npa-btn gold" onclick="saveNote()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ COMPLETION MODAL ═══════════ -->
+<div id="completion-modal">
+  <div id="completion-box">
+    <div class="comp-trophy">🏆</div>
+    <div class="comp-title">讀完了！</div>
+    <div class="comp-book" id="comp-book-title"></div>
+    <div class="comp-stats-row">
+      <div class="comp-stat"><div class="comp-stat-val" id="comp-time">—</div><div class="comp-stat-lbl">閱讀時間</div></div>
+      <div class="comp-stat"><div class="comp-stat-val" id="comp-pages">—</div><div class="comp-stat-lbl">頁數</div></div>
+      <div class="comp-stat"><div class="comp-stat-val" id="comp-notes">—</div><div class="comp-stat-lbl">筆記數</div></div>
+    </div>
+    <button class="comp-close" onclick="closeCompletion()">太棒了 ✓</button>
   </div>
 </div>
 
@@ -529,7 +715,7 @@ if (typeof pdfjsLib === 'undefined') {
 // ══════════════════════════════════════
 //  IndexedDB
 // ══════════════════════════════════════
-const DB_NAME = 'AudiobookLibrary', DB_VER = 1;
+const DB_NAME = 'AudiobookLibrary', DB_VER = 2;
 let db;
 
 function openDB() {
@@ -537,12 +723,80 @@ function openDB() {
     const req = indexedDB.open(DB_NAME, DB_VER);
     req.onupgradeneeded = e => {
       const d = e.target.result;
-      if (!d.objectStoreNames.contains('books')) {
+      if (!d.objectStoreNames.contains('books'))
         d.createObjectStore('books', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('notes')) {
+        const ns = d.createObjectStore('notes', { keyPath: 'id' });
+        ns.createIndex('bookId', 'bookId');
       }
+      if (!d.objectStoreNames.contains('readingLog'))
+        d.createObjectStore('readingLog', { keyPath: 'date' });
     };
     req.onsuccess = e => { db = e.target.result; res(db); };
     req.onerror = () => rej(req.error);
+  });
+}
+
+// ── Notes CRUD ──
+function notesPut(note) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction('notes', 'readwrite');
+    tx.objectStore('notes').put(note);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+function notesGetAll() {
+  return new Promise((res, rej) => {
+    const req = db.transaction('notes').objectStore('notes').getAll();
+    req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+  });
+}
+function notesGetByBook(bookId) {
+  return new Promise((res, rej) => {
+    const req = db.transaction('notes').objectStore('notes').index('bookId').getAll(bookId);
+    req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+  });
+}
+function notesDelete(id) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction('notes', 'readwrite');
+    tx.objectStore('notes').delete(id);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+
+// ── Reading Log CRUD ──
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function weekStartStr() {
+  const d = new Date(); d.setDate(d.getDate() - d.getDay());
+  return d.toISOString().slice(0, 10);
+}
+async function logTodaySeconds(delta) {
+  if (delta <= 0) return;
+  const date = todayStr();
+  await new Promise((res, rej) => {
+    const tx = db.transaction('readingLog', 'readwrite');
+    const store = tx.objectStore('readingLog');
+    const req = store.get(date);
+    req.onsuccess = () => {
+      const cur = req.result || { date, seconds: 0 };
+      cur.seconds += delta;
+      store.put(cur);
+    };
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+  // 告訴 GitHub Actions 今天有讀書 → 不用發通知
+  if (syncEnabled && syncDbUrl && syncKey) {
+    fetch(syncUrl('lastReadDate'), {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(date)
+    }).catch(() => {});
+  }
+}
+function readingLogGetAll() {
+  return new Promise((res, rej) => {
+    const req = db.transaction('readingLog').objectStore('readingLog').getAll();
+    req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
   });
 }
 
@@ -594,10 +848,71 @@ async function initLibrary() {
   }
 }
 
+// ══════════════════════════════════════
+//  Streak + Stats
+// ══════════════════════════════════════
+const WEEK_GOAL_SEC = 3 * 3600; // 預設 3 小時
+
+async function calcStreak() {
+  const logs = await readingLogGetAll();
+  const active = new Set(logs.filter(l => l.seconds >= 60).map(l => l.date));
+  const today = todayStr();
+  const yest = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (!active.has(today) && !active.has(yest)) return 0;
+  let streak = 0;
+  let d = active.has(today) ? new Date() : new Date(Date.now() - 86400000);
+  while (true) {
+    const s = d.toISOString().slice(0, 10);
+    if (!active.has(s)) break;
+    streak++;
+    d = new Date(d.getTime() - 86400000);
+  }
+  return streak;
+}
+
+async function calcWeekSeconds() {
+  const logs = await readingLogGetAll();
+  const ws = weekStartStr();
+  return logs.filter(l => l.date >= ws).reduce((s, l) => s + l.seconds, 0);
+}
+
+async function renderStats() {
+  const [books, streak, weekSec] = await Promise.all([dbGetAll(), calcStreak(), calcWeekSeconds()]);
+  const completed = books.filter(b => b.completed).length;
+  const totalSec = books.reduce((s, b) => s + (b.timerSeconds || 0), 0);
+
+  // streak
+  const badge = document.getElementById('streak-badge');
+  document.getElementById('streak-count').textContent = streak;
+  badge.classList.toggle('zero', streak === 0);
+  badge.textContent = streak === 0 ? '🔥 0 天' : '';
+  if (streak > 0) {
+    badge.innerHTML = `🔥 <span style="font-size:15px">${streak}</span> 天`;
+  }
+
+  // stats
+  const totalH = totalSec >= 3600 ? `${(totalSec/3600).toFixed(1)}h` : `${Math.floor(totalSec/60)}m`;
+  document.getElementById('stat-books').textContent = completed;
+  document.getElementById('stat-hours').textContent = totalH;
+
+  // week goal
+  const weekH = weekSec >= 3600 ? `${(weekSec/3600).toFixed(1)}h` : `${Math.floor(weekSec/60)}m`;
+  const goalH = (WEEK_GOAL_SEC/3600).toFixed(0) + 'h';
+  document.getElementById('week-goal-text').textContent = `${weekH} / ${goalH}`;
+  document.getElementById('week-goal-bar').style.width = Math.min(100, weekSec / WEEK_GOAL_SEC * 100) + '%';
+
+  // notification banner
+  const dismissed = localStorage.getItem('notifBannerDismissed');
+  if (!dismissed && 'Notification' in window && Notification.permission === 'default') {
+    document.getElementById('notif-banner').classList.add('show');
+  }
+}
+
 async function renderLibrary() {
   const books = await dbGetAll();
   const grid = document.getElementById('book-grid');
   const empty = document.getElementById('lib-empty');
+  renderStats();
 
   if (!books.length) {
     empty.style.display = 'flex';
@@ -1043,7 +1358,7 @@ function togglePlay() {
 function speakSentence(idx) {
   if (idx >= sentences.length) {
     if (currentPage < totalPages) renderPage(currentPage + 1, 0).then(() => speakSentence(0));
-    else stopSpeech();
+    else { stopSpeech(); triggerCompletion(); }
     return;
   }
   const text = sentences[idx].trim();
@@ -1193,11 +1508,19 @@ function seekProgress(e) {
 // ══════════════════════════════════════
 //  Timer
 // ══════════════════════════════════════
+let logAccum = 0;
 function startTimer() {
   if (timerInterval) return;
-  timerInterval = setInterval(() => { timerSeconds++; updateTimer(); saveProgress(); }, 1000);
+  timerInterval = setInterval(() => {
+    timerSeconds++; logAccum++;
+    updateTimer(); saveProgress();
+    if (logAccum >= 60) { logTodaySeconds(60); logAccum = 0; }
+  }, 1000);
 }
-function stopTimer() { clearInterval(timerInterval); timerInterval = null; }
+function stopTimer() {
+  clearInterval(timerInterval); timerInterval = null;
+  if (logAccum > 0) { logTodaySeconds(logAccum); logAccum = 0; }
+}
 function updateTimer() {
   const m = String(Math.floor(timerSeconds / 60)).padStart(2,'0');
   const s = String(timerSeconds % 60).padStart(2,'0');
@@ -1232,7 +1555,293 @@ function adjustFont(d) {
 }
 
 function enableControls(on) {
-  ['btn-prev','btn-play','btn-next'].forEach(id => document.getElementById(id).disabled = !on);
+  ['btn-prev','btn-play','btn-next','btn-bookmark'].forEach(id => document.getElementById(id).disabled = !on);
+}
+
+// ══════════════════════════════════════
+//  Notes
+// ══════════════════════════════════════
+let activeNoteId = null;
+
+function openNotePopup(sentenceEl) {
+  const idx = parseInt(sentenceEl.dataset.idx);
+  const text = sentences[idx] || '';
+  document.getElementById('note-popup-sentence').textContent = text;
+  document.getElementById('note-popup-textarea').value = '';
+  document.getElementById('note-del-btn').style.display = 'none';
+  activeNoteId = null;
+
+  // check if note already exists for this position
+  notesGetByBook(currentBookId).then(notes => {
+    const existing = notes.find(n => n.page === currentPage && n.sentenceIdx === idx);
+    if (existing) {
+      document.getElementById('note-popup-textarea').value = existing.noteText;
+      document.getElementById('note-del-btn').style.display = '';
+      activeNoteId = existing.id;
+    }
+  });
+
+  document.getElementById('note-popup').classList.add('open');
+  setTimeout(() => document.getElementById('note-popup-textarea').focus(), 100);
+}
+
+function closeNotePopup() {
+  document.getElementById('note-popup').classList.remove('open');
+  activeNoteId = null;
+}
+
+async function saveNote() {
+  const text = document.getElementById('note-popup-textarea').value.trim();
+  if (!text) { closeNotePopup(); return; }
+  const idx = sentences.indexOf(document.getElementById('note-popup-sentence').textContent);
+  const sentIdx = idx >= 0 ? idx : sentenceIdx;
+  const note = {
+    id: activeNoteId || ('note_' + Date.now()),
+    bookId: currentBookId,
+    bookTitle: document.getElementById('book-title').textContent,
+    page: currentPage,
+    sentenceIdx: sentIdx,
+    sentenceText: document.getElementById('note-popup-sentence').textContent,
+    noteText: text,
+    createdAt: Date.now()
+  };
+  await notesPut(note);
+  closeNotePopup();
+  pushNoteToCloud(note);
+  renderSentences(); // re-render to show note indicators
+}
+
+async function deleteCurrentNote() {
+  if (!activeNoteId) return;
+  await notesDelete(activeNoteId);
+  closeNotePopup();
+  renderSentences();
+}
+
+// Overlay note indicators after renderSentences
+const _origRenderSentences = renderSentences;
+function renderSentences() {
+  const c = document.getElementById('page-content');
+  c.innerHTML = '';
+  sentences.forEach((s, i) => {
+    const sp = document.createElement('span');
+    sp.className = 'sentence';
+    sp.dataset.idx = i;
+    sp.textContent = s + ' ';
+    c.appendChild(sp);
+  });
+  // mark bookmarks
+  if (currentBookId) {
+    dbGet(currentBookId).then(book => {
+      if (!book?.bookmarks) return;
+      const bms = new Set(book.bookmarks.filter(b => b.page === currentPage).map(b => b.sentenceIdx));
+      c.querySelectorAll('.sentence').forEach(el => {
+        if (bms.has(parseInt(el.dataset.idx))) el.classList.add('bookmarked');
+      });
+    });
+    // mark notes
+    notesGetByBook(currentBookId).then(notes => {
+      const noteIdxs = new Set(notes.filter(n => n.page === currentPage).map(n => n.sentenceIdx));
+      c.querySelectorAll('.sentence').forEach(el => {
+        if (noteIdxs.has(parseInt(el.dataset.idx))) {
+          el.style.borderBottom = '2px dotted var(--gold-dim)';
+        }
+      });
+    });
+  }
+}
+
+// Long press on sentence → note popup
+let lpTimer = null;
+document.getElementById('page-content').addEventListener('touchstart', e => {
+  const el = e.target.closest('.sentence');
+  if (!el) return;
+  lpTimer = setTimeout(() => { lpTimer = null; openNotePopup(el); }, 600);
+}, { passive: true });
+document.getElementById('page-content').addEventListener('touchmove', () => {
+  if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+}, { passive: true });
+document.getElementById('page-content').addEventListener('touchend', () => {
+  if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+}, { passive: true });
+// Desktop: right click
+document.getElementById('page-content').addEventListener('contextmenu', e => {
+  const el = e.target.closest('.sentence');
+  if (!el) return;
+  e.preventDefault();
+  openNotePopup(el);
+});
+
+// ── Notes Library Screen ──
+async function openNotesScreen() {
+  showScreen('notes');
+  const notes = await notesGetAll();
+  const body = document.getElementById('notes-body');
+  const empty = document.getElementById('notes-empty');
+  if (!notes.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  body.innerHTML = '';
+  body.appendChild(empty);
+  notes.sort((a, b) => b.createdAt - a.createdAt);
+  for (const n of notes) {
+    const card = document.createElement('div');
+    card.className = 'note-card';
+    const d = new Date(n.createdAt);
+    const dateStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    card.innerHTML = `
+      <div class="note-card-meta"><span>${escHtml(n.bookTitle || '')} · 第${n.page}頁</span><span>${dateStr}</span></div>
+      <div class="note-card-quote">「${escHtml(n.sentenceText || '')}」</div>
+      <div class="note-card-text">${escHtml(n.noteText)}</div>
+    `;
+    body.appendChild(card);
+  }
+}
+
+function closeNotesScreen() { showScreen('library'); }
+
+// ══════════════════════════════════════
+//  Bookmarks
+// ══════════════════════════════════════
+async function toggleBookmark() {
+  if (!currentBookId) return;
+  const book = await dbGet(currentBookId);
+  if (!book) return;
+  if (!book.bookmarks) book.bookmarks = [];
+  const idx = sentenceIdx;
+  const existing = book.bookmarks.findIndex(b => b.page === currentPage && b.sentenceIdx === idx);
+  const btn = document.getElementById('btn-bookmark');
+  if (existing >= 0) {
+    book.bookmarks.splice(existing, 1);
+    btn.classList.remove('on');
+  } else {
+    book.bookmarks.push({ page: currentPage, sentenceIdx: idx, text: sentences[idx] || '', createdAt: Date.now() });
+    btn.classList.add('on');
+  }
+  await dbPut(book);
+  renderSentences();
+  buildBookmarkTOC(book);
+}
+
+function buildBookmarkTOC(book) {
+  if (!book?.bookmarks?.length) return;
+  const list = document.getElementById('toc-list');
+  // Add bookmarks section at top
+  const existing = list.querySelector('.bm-section');
+  if (existing) existing.remove();
+  const sec = document.createElement('div');
+  sec.className = 'bm-section';
+  sec.innerHTML = `<div style="font-size:10px;color:var(--text-dim);padding:10px 16px 4px;text-transform:uppercase;letter-spacing:.08em">書簽</div>`;
+  for (const bm of book.bookmarks.sort((a,b)=>a.page-b.page||a.sentenceIdx-b.sentenceIdx)) {
+    const d = document.createElement('div');
+    d.className = 'toc-item';
+    d.style.fontSize = '12px';
+    d.textContent = `第${bm.page}頁 · ${(bm.text||'').slice(0,20)}…`;
+    d.onclick = () => { renderPage(bm.page, bm.sentenceIdx); closeDrawer(); };
+    sec.appendChild(d);
+  }
+  list.prepend(sec);
+}
+
+// Update bookmark button state on page render
+const _origRenderPage = renderPage;
+
+// ══════════════════════════════════════
+//  Book Completion
+// ══════════════════════════════════════
+async function triggerCompletion() {
+  if (!currentBookId) return;
+  const book = await dbGet(currentBookId);
+  if (!book || book.completed) return;
+  book.completed = true;
+  book.completedAt = Date.now();
+  await dbPut(book);
+
+  const notes = await notesGetByBook(currentBookId);
+  const timeStr = timerSeconds >= 3600
+    ? `${(timerSeconds/3600).toFixed(1)}h`
+    : `${Math.floor(timerSeconds/60)}m`;
+
+  document.getElementById('comp-book-title').textContent = book.title;
+  document.getElementById('comp-time').textContent = timeStr;
+  document.getElementById('comp-pages').textContent = totalPages;
+  document.getElementById('comp-notes').textContent = notes.length;
+  document.getElementById('completion-modal').classList.add('open');
+}
+
+function closeCompletion() {
+  document.getElementById('completion-modal').classList.remove('open');
+  renderStats();
+}
+
+// ══════════════════════════════════════
+//  Push Notifications
+// ══════════════════════════════════════
+async function requestPushPermission() {
+  if (!('Notification' in window)) return;
+  const perm = await Notification.requestPermission();
+  document.getElementById('notif-banner').classList.remove('show');
+  if (perm === 'granted') {
+    localStorage.setItem('notifBannerDismissed', '1');
+    await subscribePush();
+  }
+}
+
+function dismissNotifBanner() {
+  document.getElementById('notif-banner').classList.remove('show');
+  localStorage.setItem('notifBannerDismissed', '1');
+}
+
+async function subscribePush() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const VAPID_PUB = localStorage.getItem('vapidPublicKey') || '';
+    if (!VAPID_PUB) return;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUB)
+    });
+    if (syncEnabled) {
+      await fetch(syncUrl('pushSub'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sub: JSON.stringify(sub), updatedAt: Date.now() })
+      });
+    }
+  } catch(e) { console.warn('Push subscribe:', e); }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function pushNoteToCloud(note) {
+  if (!syncEnabled || !syncDbUrl || !syncKey) return;
+  try {
+    await fetch(syncUrl(`notes/${note.id}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(note)
+    });
+  } catch(e) {}
+}
+
+async function pullNotesFromCloud() {
+  if (!syncEnabled || !syncDbUrl || !syncKey) return;
+  try {
+    const r = await fetch(syncUrl('notes'));
+    if (!r.ok) return;
+    const cloudNotes = await r.json();
+    if (!cloudNotes) return;
+    const local = await notesGetAll();
+    const localIds = new Set(local.map(n => n.id));
+    for (const n of Object.values(cloudNotes)) {
+      if (n && n.id && !localIds.has(n.id)) await notesPut(n);
+    }
+  } catch(e) {}
 }
 
 // swipe
@@ -1606,15 +2215,20 @@ function resetSync() {
 }
 
 // ── INIT ──
-initFirebase();   // 先建立 syncEnabled / syncDbUrl，initLibrary 內才能拉書
+initFirebase();
 pullTtsSettings();
 updateSyncUI();
-initLibrary();    // 開 DB → renderLibrary → pullBooksFromCloud
+initLibrary().then(() => pullNotesFromCloud());
 
-// 初始化 Edge-TTS UI
+// Edge-TTS UI
 document.getElementById('tts-server-input').value = edgeTtsUrl;
 document.getElementById('tts-voice-select').value = edgeTtsVoice;
 updateTtsStatus(edgeTtsUrl ? null : null);
+
+// Service Worker 註冊
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/audiobook/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
