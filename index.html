@@ -441,6 +441,53 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .particle { position: fixed; pointer-events: none; z-index: 700; border-radius: 50%; animation: pFly var(--d,1s) ease-out forwards; }
 @keyframes pFly { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(var(--tx,0),var(--ty,-100px)) scale(0);opacity:0} }
 
+/* ── Pixel Character ── */
+#px-char-wrap {
+  position: fixed; bottom: calc(100px + var(--safe-b)); right: 14px;
+  z-index: 490; cursor: pointer; user-select: none; -webkit-user-select: none;
+}
+#px-char-inner {
+  animation: pxBob 2.6s ease-in-out infinite;
+  transform-origin: bottom center;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+}
+#px-char-canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+@keyframes pxBob { 0%,100%{transform:translateY(0) scaleY(1)} 48%{transform:translateY(-6px) scaleY(1.04)} 52%{transform:translateY(-6px) scaleY(1.04)} }
+#px-char-inner.px-jump {
+  animation: pxJumpA 0.55s cubic-bezier(.4,0,.2,1);
+}
+@keyframes pxJumpA {
+  0%{transform:translateY(0) scaleY(1)}
+  20%{transform:translateY(-20px) scaleY(1.08)}
+  60%{transform:translateY(-16px) scaleY(1)}
+  80%{transform:translateY(-2px) scaleY(0.9)}
+  100%{transform:translateY(0) scaleY(1)}
+}
+#px-char-inner.px-wiggle {
+  animation: pxWigA 0.5s ease;
+}
+@keyframes pxWigA {
+  0%,100%{transform:rotate(0)}
+  20%{transform:rotate(-10deg)}
+  50%{transform:rotate(9deg)}
+  75%{transform:rotate(-5deg)}
+}
+#px-char-wrap.lottery-ready #px-char-inner {
+  filter: drop-shadow(0 0 8px var(--gold)) drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+  animation: pxGlow 0.9s ease-in-out infinite alternate, pxBob 2.6s ease-in-out infinite;
+}
+@keyframes pxGlow { from{filter:drop-shadow(0 0 4px var(--gold))} to{filter:drop-shadow(0 0 14px var(--gold))} }
+#px-bubble {
+  position: absolute; bottom: 78px; right: 0;
+  background: var(--surface); border: 1.5px solid var(--gold-dim); border-radius: 10px 10px 2px 10px;
+  padding: 7px 11px; font-size: 11px; color: var(--text); line-height: 1.45;
+  max-width: 150px; white-space: normal;
+  opacity: 0; transform: scale(0.8) translateY(5px); transform-origin: bottom right;
+  transition: all 0.22s cubic-bezier(.4,0,.2,1); pointer-events: none;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.55); z-index: 491;
+}
+#px-bubble.show { opacity: 1; transform: scale(1) translateY(0); }
+
 /* ── Stats row ── */
 #lib-stats-row {
   padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border);
@@ -758,6 +805,14 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
   <div class="lottery-box" id="lottery-box" onclick="clickLotteryBox()">🎁</div>
   <div id="lottery-card"></div>
   <button class="lottery-close" id="lottery-close-btn" onclick="closeLotteryModal()" style="display:none">繼續 →</button>
+</div>
+
+<!-- Pixel character companion -->
+<div id="px-char-wrap" onclick="pxTap()">
+  <div id="px-bubble"></div>
+  <div id="px-char-inner">
+    <canvas id="px-char-canvas"></canvas>
+  </div>
 </div>
 
 <!-- ═══════════ NOTES SCREEN ═══════════ -->
@@ -2387,14 +2442,16 @@ function resetSync() {
 const LEVEL_THRESHOLDS = [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3300, 4200, 5500, 7000, 9000, 12000, 99999];
 const LEVEL_TITLES = ['書蟲新手','好奇探索者','閱讀學徒','知識獵人','專注讀者','書林俠士','思想旅人','智識追求者','深度思考者','文字修行者','書海航行者','知識守護者','思想領航者','閱讀大師','書本傳奇'];
 const LOTTERY_REWARDS = [
-  { label: '+10 XP', rarity: 'common',    emoji: '✨', xp: 10,  prob: 0.30 },
-  { label: '+20 XP', rarity: 'common',    emoji: '⭐', xp: 20,  prob: 0.20 },
-  { label: '+30 XP', rarity: 'rare',      emoji: '🔮', xp: 30,  prob: 0.15 },
-  { label: '+50 XP', rarity: 'rare',      emoji: '💎', xp: 50,  prob: 0.15 },
-  { label: '+80 XP 史詩', rarity: 'epic',      emoji: '🎯', xp: 80,  prob: 0.08 },
-  { label: '+100 XP 史詩', rarity: 'epic',     emoji: '🌟', xp: 100, prob: 0.07 },
-  { label: '+150 XP 傳說', rarity: 'legendary', emoji: '👑', xp: 150, prob: 0.03 },
-  { label: '+200 XP 傳說！', rarity: 'legendary', emoji: '🏆', xp: 200, prob: 0.02 },
+  { label: '+10 XP',     rarity: 'common',    emoji: '✨', xp: 10,  prob: 0.26 },
+  { label: '+20 XP',     rarity: 'common',    emoji: '⭐', xp: 20,  prob: 0.18 },
+  { label: '+30 XP',     rarity: 'rare',      emoji: '🔮', xp: 30,  prob: 0.13 },
+  { label: '+50 XP',     rarity: 'rare',      emoji: '💎', xp: 50,  prob: 0.10 },
+  { label: '霓虹時裝',   rarity: 'rare',      emoji: '💚', xp: 15,  outfit: { c4: '#00c9a7', name: '霓虹少女' }, prob: 0.10 },
+  { label: '+80 XP 史詩', rarity: 'epic',     emoji: '🎯', xp: 80,  prob: 0.08 },
+  { label: '火焰時裝',   rarity: 'epic',      emoji: '🔥', xp: 25,  outfit: { c4: '#e0512b', name: '火焰少女' }, prob: 0.06 },
+  { label: '星空時裝',   rarity: 'epic',      emoji: '🌌', xp: 25,  outfit: { c4: '#1a5cbf', name: '星空少女' }, prob: 0.05 },
+  { label: '+150 XP 傳說', rarity: 'legendary', emoji: '👑', xp: 150, prob: 0.02 },
+  { label: '傳說金裝',   rarity: 'legendary', emoji: '🏆', xp: 50,  outfit: { c4: '#c9a227', name: '傳說金裝' }, prob: 0.02 },
 ];
 const ACHIEVEMENTS = [
   { id:'first_open', name:'初次啟程',   desc:'第一次打開有聲書',  icon:'📖', xp:30  },
@@ -2474,6 +2531,10 @@ function updateGameUI() {
   const shieldEl = el('shield-badge');
   if (shieldEl) shieldEl.style.display = shields > 0 ? 'flex' : 'none';
   if (el('shield-count')) el('shield-count').textContent = shields;
+  // Sync lottery-ready glow on character
+  const today = new Date().toISOString().slice(0, 10);
+  const lotteryReady = gs.lotteryAvailable && gs.lotteryUsedDate !== today;
+  document.getElementById('px-char-wrap')?.classList.toggle('lottery-ready', !!lotteryReady);
 }
 
 function updateGoalSegments() {
@@ -2506,6 +2567,9 @@ function triggerMilestone(m) {
   const gs = getGameState();
   showMilestoneToast(m.title, m.sub, m.color);
   spawnParticles(m.idx === 2 ? 60 : m.idx === 1 ? 35 : 20, m.color);
+  pxDoAnim('jump');
+  const bubbles = ['🔥 連讀保護啟動！', '🛡️ 護盾 +1！加油！', '🏆 太厲害了！'];
+  setTimeout(() => pxShowBubble(bubbles[m.idx] || ''), 600);
   if (m.idx === 0) {
     earnXP(30, document.getElementById('timer-display'));
   } else if (m.idx === 1) {
@@ -2560,6 +2624,8 @@ function showLevelUp(lv) {
   void overlay.offsetWidth;
   overlay.classList.add('show');
   spawnParticles(60, '#c9a227');
+  pxDoAnim('jump');
+  setTimeout(() => pxShowBubble('🌟 升到 Lv.' + lv + ' 了！'), 500);
   setTimeout(() => overlay.classList.remove('show'), 2900);
 }
 
@@ -2613,7 +2679,16 @@ function clickLotteryBox() {
     const particleColor = reward.rarity === 'legendary' ? '#ffd700' : reward.rarity === 'epic' ? '#9b59b6' : '#c9a227';
     const particleCount = reward.rarity === 'legendary' ? 80 : reward.rarity === 'epic' ? 50 : 25;
     spawnParticles(particleCount, particleColor);
-    earnXP(reward.xp, box);
+    if (reward.xp) earnXP(reward.xp, box);
+    if (reward.outfit) {
+      const gs2 = getGameState();
+      gs2.outfits = gs2.outfits || [];
+      if (!gs2.outfits.includes(reward.outfit.name)) gs2.outfits.push(reward.outfit.name);
+      gs2.outfit = reward.outfit;
+      saveGameState(gs2);
+      pxDraw();
+      setTimeout(() => { pxDoAnim('jump'); pxShowBubble('✨ 換上' + reward.outfit.name + '！'); }, 700);
+    }
     if (closeBtn) closeBtn.style.display = 'block';
     checkAchievements();
   }, 650);
@@ -2666,7 +2741,110 @@ function showAchievementPopup(ach) {
   popup.classList.remove('show');
   void popup.offsetWidth;
   popup.classList.add('show');
+  pxShowBubble(ach.icon + ' 成就解鎖：' + ach.name);
   setTimeout(() => popup.classList.remove('show'), 3800);
+}
+
+// ══════════════════════════════════════
+//  PIXEL CHARACTER
+// ══════════════════════════════════════
+const PX_SCALE = 4;
+const PX_CHAR_DATA = [
+//  0  1  2  3  4  5  6  7  8  9 10 11
+  [ 0, 0, 1, 2, 2, 2, 2, 2, 2, 1, 0, 0 ], // hair top
+  [ 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0 ], // hair
+  [ 0, 1, 2, 3, 3, 3, 3, 3, 3, 2, 1, 0 ], // face top
+  [ 0, 1, 2, 3, 1, 3, 3, 1, 3, 2, 1, 0 ], // eyes
+  [ 0, 1, 2, 3, 3, 3, 3, 3, 3, 2, 1, 0 ], // nose
+  [ 0, 1, 2, 3, 3, 1, 1, 3, 3, 2, 1, 0 ], // mouth
+  [ 0, 1, 2, 2, 3, 3, 3, 3, 2, 2, 1, 0 ], // chin (hair sides)
+  [ 0, 0, 1, 2, 2, 2, 2, 2, 2, 1, 0, 0 ], // head bottom
+  [ 0, 0, 0, 1, 3, 3, 3, 3, 1, 0, 0, 0 ], // neck
+  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0 ], // shoulders
+  [ 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1 ], // body
+  [ 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1 ], // body
+  [ 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1 ], // body
+  [ 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0 ], // waist
+  [ 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0 ], // skirt
+  [ 0, 0, 1, 3, 3, 1, 1, 3, 3, 1, 0, 0 ], // legs
+  [ 0, 0, 1, 3, 3, 1, 1, 3, 3, 1, 0, 0 ], // legs
+  [ 0, 0, 1, 1, 3, 0, 0, 3, 1, 1, 0, 0 ], // feet
+];
+const PX_W = 12, PX_H = PX_CHAR_DATA.length;
+
+const PX_MSGS_IDLE = [
+  '讀書是最棒的冒險 📖',
+  '每一頁都是新世界 ✨',
+  '加油！你快突破了！',
+  '今天也要繼續聽書！',
+  '我最喜歡陪你聽書了',
+  '知識就是力量 💪',
+  '你是最棒的讀者！',
+  '一起衝破 30 分鐘吧！',
+  '連讀下去，火焰不滅 🔥',
+];
+
+let pxBubbleTimer = null;
+
+function initPxChar() {
+  const canvas = document.getElementById('px-char-canvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const lw = PX_W * PX_SCALE, lh = PX_H * PX_SCALE;
+  canvas.width = lw * dpr;
+  canvas.height = lh * dpr;
+  canvas.style.width = lw + 'px';
+  canvas.style.height = lh + 'px';
+  pxDraw();
+}
+
+function pxDraw() {
+  const canvas = document.getElementById('px-char-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const gs = getGameState();
+  const outfit = gs.outfit || {};
+  // color index: 0=transparent, 1=dark, 2=hair(gold), 3=skin, 4=clothes
+  const pal = [null, '#111111', '#c9a227', '#f5c891', outfit.c4 || '#7c52b8'];
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let r = 0; r < PX_CHAR_DATA.length; r++) {
+    for (let c = 0; c < PX_CHAR_DATA[r].length; c++) {
+      const ci = PX_CHAR_DATA[r][c];
+      if (!ci || !pal[ci]) continue;
+      ctx.fillStyle = pal[ci];
+      ctx.fillRect(c * PX_SCALE * dpr, r * PX_SCALE * dpr, PX_SCALE * dpr, PX_SCALE * dpr);
+    }
+  }
+  // lottery-ready glow indicator on wrapper
+  const gs2 = getGameState();
+  const today = new Date().toISOString().slice(0, 10);
+  const lotteryReady = gs2.lotteryAvailable && gs2.lotteryUsedDate !== today;
+  document.getElementById('px-char-wrap')?.classList.toggle('lottery-ready', !!lotteryReady);
+}
+
+function pxDoAnim(type) {
+  const inner = document.getElementById('px-char-inner');
+  if (!inner) return;
+  inner.classList.remove('px-jump', 'px-wiggle');
+  void inner.offsetWidth;
+  inner.classList.add(type === 'jump' ? 'px-jump' : 'px-wiggle');
+  inner.addEventListener('animationend', () => inner.classList.remove('px-jump', 'px-wiggle'), { once: true });
+}
+
+function pxShowBubble(msg) {
+  const bubble = document.getElementById('px-bubble');
+  if (!bubble) return;
+  bubble.textContent = msg;
+  bubble.classList.add('show');
+  clearTimeout(pxBubbleTimer);
+  pxBubbleTimer = setTimeout(() => bubble.classList.remove('show'), 3200);
+}
+
+function pxTap() {
+  pxDoAnim('wiggle');
+  pxShowBubble(PX_MSGS_IDLE[Math.floor(Math.random() * PX_MSGS_IDLE.length)]);
 }
 
 // ── INIT ──
@@ -2693,6 +2871,7 @@ if ('serviceWorker' in navigator) {
 // 遊戲系統初始化
 updateGameUI();
 checkAchievements();
+initPxChar();
 </script>
 </body>
 </html>
