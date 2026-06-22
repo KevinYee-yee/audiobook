@@ -327,6 +327,120 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 #s-dot.ing { background: var(--gold); }
 .s-divider { height: 1px; background: var(--border); }
 
+/* ══ GAME UI ══ */
+
+/* Level + XP row */
+#lib-game-row {
+  padding: 10px 20px; background: #0a0a0a; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.level-badge {
+  background: linear-gradient(135deg, #2a1f00, #1a1300);
+  border: 1.5px solid var(--gold); border-radius: 20px;
+  padding: 4px 12px; font-size: 13px; color: var(--gold); font-weight: 900;
+  white-space: nowrap; flex-shrink: 0; letter-spacing: 0.03em;
+}
+.level-title { font-size: 10px; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; }
+.xp-wrap { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.xp-bar-bg { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); border-radius: 3px; transition: width 0.8s cubic-bezier(.4,0,.2,1); width: 0%; }
+.xp-lbl { font-size: 10px; color: var(--text-dim); text-align: right; }
+.shield-badge { font-size: 13px; flex-shrink: 0; position: relative; }
+.shield-badge span { position: absolute; top: -4px; right: -6px; font-size: 9px; font-weight: 700; color: #000; background: var(--gold); border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
+
+/* 3-segment goal bar in reader */
+#goal-bar-row { display: flex; align-items: center; gap: 4px; flex: 1; }
+.goal-seg { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.goal-seg-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; width: 0%; }
+.goal-seg:nth-child(1) .goal-seg-fill { background: #5dba7e; }
+.goal-seg:nth-child(2) .goal-seg-fill { background: #4a9fd4; }
+.goal-seg:nth-child(3) .goal-seg-fill { background: var(--gold); }
+.goal-label { font-size: 9px; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; }
+
+/* Milestone toast */
+#milestone-toast {
+  position: fixed; bottom: calc(120px + var(--safe-b)); left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  padding: 10px 20px; z-index: 600; transition: all 0.3s cubic-bezier(.4,0,.2,1);
+  opacity: 0; pointer-events: none; display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6); white-space: nowrap;
+}
+#milestone-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast-title { font-size: 15px; font-weight: 700; }
+.toast-sub { font-size: 11px; color: var(--text-dim); }
+
+/* Lottery modal */
+#lottery-modal {
+  display: none; position: fixed; inset: 0; z-index: 650;
+  background: rgba(0,0,0,0.92); backdrop-filter: blur(12px);
+  align-items: center; justify-content: center; flex-direction: column; gap: 20px;
+}
+#lottery-modal.open { display: flex; }
+#lottery-modal h2 { font-size: 18px; color: var(--gold); }
+#lottery-modal p { font-size: 12px; color: var(--text-dim); }
+.lottery-box {
+  width: 130px; height: 130px;
+  background: radial-gradient(circle at 30% 30%, #2a1f00, #0a0800);
+  border: 2px solid var(--gold); border-radius: 24px;
+  display: flex; align-items: center; justify-content: center; font-size: 56px;
+  cursor: pointer; box-shadow: 0 0 40px rgba(201,168,76,0.3); user-select: none;
+  transition: transform 0.1s;
+}
+.lottery-box:active { transform: scale(0.95); }
+.lottery-box.shake { animation: lotteryShake 0.7s ease both; }
+@keyframes lotteryShake {
+  0%,100%{transform:rotate(0)}10%,30%,50%,70%,90%{transform:rotate(-5deg) scale(1.05)}
+  20%,40%,60%,80%{transform:rotate(5deg) scale(1.05)}
+}
+#lottery-card { display: none; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+#lottery-card.show { display: flex; animation: cardReveal 0.5s cubic-bezier(.4,0,.2,1); }
+@keyframes cardReveal { from{transform:rotateY(90deg) scale(0.8);opacity:0} to{transform:rotateY(0) scale(1);opacity:1} }
+.l-rarity { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; }
+.l-icon { font-size: 60px; }
+.l-name { font-size: 20px; font-weight: 700; color: var(--text); }
+.l-desc { font-size: 12px; color: var(--text-dim); }
+.rarity-common .l-rarity { color: #888; }
+.rarity-rare .l-rarity { color: #5dba7e; }
+.rarity-epic .l-rarity { color: #9b59b6; }
+.rarity-legendary .l-rarity { color: var(--gold); text-shadow: 0 0 20px var(--gold); }
+.rarity-legendary .l-icon { filter: drop-shadow(0 0 15px gold); }
+.lottery-close { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 32px; border-radius: 20px; font-size: 14px; cursor: pointer; margin-top: 8px; }
+
+/* Achievement popup */
+#achievement-popup {
+  position: fixed; top: calc(72px + var(--safe-t)); right: 16px;
+  background: var(--surface); border: 1px solid var(--gold-dim); border-radius: 14px;
+  padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+  z-index: 600; transform: translateX(120%); transition: transform 0.4s cubic-bezier(.4,0,.2,1);
+  max-width: 280px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); pointer-events: none;
+}
+#achievement-popup.show { transform: translateX(0); }
+.ach-icon { font-size: 30px; flex-shrink: 0; }
+.ach-lbl { font-size: 9px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.1em; }
+.ach-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.ach-desc { font-size: 11px; color: var(--text-dim); }
+
+/* XP float */
+.xp-float { position: fixed; font-size: 15px; font-weight: 700; color: var(--gold); pointer-events: none; z-index: 700; animation: xpFloat 1.2s ease-out forwards; }
+@keyframes xpFloat { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-50px) scale(1.3)} }
+
+/* Level up overlay */
+#levelup-overlay {
+  display: none; position: fixed; inset: 0; z-index: 680;
+  background: rgba(0,0,0,0.88); align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+}
+#levelup-overlay.show { display: flex; animation: luFade 2.8s forwards; }
+@keyframes luFade { 0%{opacity:0} 15%{opacity:1} 75%{opacity:1} 100%{opacity:0} }
+.lu-text { font-size: 44px; font-weight: 900; color: var(--gold); text-shadow: 0 0 40px rgba(201,168,76,0.8); animation: luPop 0.4s cubic-bezier(.4,0,.2,1); }
+@keyframes luPop { from{transform:scale(0.4)} to{transform:scale(1)} }
+.lu-level { font-size: 28px; font-weight: 700; color: var(--text); }
+.lu-title { font-size: 15px; color: var(--text-dim); }
+
+/* Particles */
+.particle { position: fixed; pointer-events: none; z-index: 700; border-radius: 50%; animation: pFly var(--d,1s) ease-out forwards; }
+@keyframes pFly { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(var(--tx,0),var(--ty,-100px)) scale(0);opacity:0} }
+
 /* ── Stats row ── */
 #lib-stats-row {
   padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border);
@@ -476,6 +590,16 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
     </div>
     <input type="file" id="file-input" accept=".pdf">
   </div>
+  <!-- Level + XP -->
+  <div id="lib-game-row">
+    <div class="level-badge" id="level-badge">Lv.1</div>
+    <div class="level-title" id="level-title">書蟲新手</div>
+    <div class="xp-wrap">
+      <div class="xp-bar-bg"><div class="xp-bar-fill" id="xp-bar-fill"></div></div>
+      <div class="xp-lbl" id="xp-lbl">0 / 100 XP</div>
+    </div>
+    <div class="shield-badge" id="shield-badge" style="display:none">🛡️<span id="shield-count">0</span></div>
+  </div>
   <!-- Streak + Stats -->
   <div id="lib-stats-row">
     <div class="streak-badge" id="streak-badge">🔥 <span id="streak-count">0</span> 天</div>
@@ -579,8 +703,12 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
       <span id="sentence-info"></span>
       <div id="timer-area">
         <div id="timer-display">00:00</div>
-        <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
-        <span id="timer-label">30min 目標</span>
+        <div id="goal-bar-row">
+          <div class="goal-seg"><div class="goal-seg-fill" id="seg0"></div></div>
+          <div class="goal-seg"><div class="goal-seg-fill" id="seg1"></div></div>
+          <div class="goal-seg"><div class="goal-seg-fill" id="seg2"></div></div>
+        </div>
+        <span class="goal-label" id="goal-label">10分</span>
       </div>
     </div>
     <div id="play-row">
@@ -605,6 +733,31 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
       </select>
     </div>
   </div>
+</div>
+
+<!-- Milestone toast -->
+<div id="milestone-toast"><span class="toast-title"></span><span class="toast-sub"></span></div>
+
+<!-- Achievement popup -->
+<div id="achievement-popup">
+  <div class="ach-icon"></div>
+  <div><div class="ach-lbl">成就解鎖</div><div class="ach-name"></div><div class="ach-desc"></div></div>
+</div>
+
+<!-- Level up overlay -->
+<div id="levelup-overlay">
+  <div class="lu-text">LEVEL UP!</div>
+  <div class="lu-level" id="lu-level"></div>
+  <div class="lu-title" id="lu-title"></div>
+</div>
+
+<!-- Lottery modal -->
+<div id="lottery-modal">
+  <h2>🎁 每日禮盒</h2>
+  <p>點擊禮盒開獎</p>
+  <div class="lottery-box" id="lottery-box" onclick="clickLotteryBox()">🎁</div>
+  <div id="lottery-card"></div>
+  <button class="lottery-close" id="lottery-close-btn" onclick="closeLotteryModal()" style="display:none">繼續 →</button>
 </div>
 
 <!-- ═══════════ NOTES SCREEN ═══════════ -->
@@ -1515,7 +1668,12 @@ function startTimer() {
   timerInterval = setInterval(() => {
     timerSeconds++; logAccum++;
     updateTimer(); saveProgress();
-    if (logAccum >= 60) { logTodaySeconds(60); logAccum = 0; }
+    checkMilestones();
+    if (logAccum >= 60) {
+      logTodaySeconds(60); logAccum = 0;
+      const xpAmt = timerSeconds >= 600 ? 10 : 5;
+      earnXP(xpAmt, document.getElementById('timer-display'));
+    }
   }, 1000);
 }
 function stopTimer() {
@@ -1523,17 +1681,22 @@ function stopTimer() {
   if (logAccum > 0) { logTodaySeconds(logAccum); logAccum = 0; }
 }
 // 計時 = 打開書就開始，不需要播放
-function startReadTimer() { startTimer(); }
+function startReadTimer() {
+  milestonesTriggered = new Set();
+  for (const m of MILESTONES) { if (timerSeconds >= m.sec) milestonesTriggered.add(m.idx); }
+  startTimer();
+}
 function stopReadTimer() { stopTimer(); }
 function updateTimer() {
   const m = String(Math.floor(timerSeconds / 60)).padStart(2,'0');
   const s = String(timerSeconds % 60).padStart(2,'0');
   document.getElementById('timer-display').textContent = `${m}:${s}`;
-  document.getElementById('timer-bar').style.width = Math.min(100, timerSeconds / GOAL * 100) + '%';
-  if (timerSeconds >= GOAL) {
-    document.getElementById('timer-display').style.color = '#5dba7e';
-    document.getElementById('timer-label').textContent = '✓ 今日達標！';
-  }
+  const disp = document.getElementById('timer-display');
+  if (timerSeconds >= 1800) disp.style.color = '#c9a227';
+  else if (timerSeconds >= 1200) disp.style.color = '#4a9fd4';
+  else if (timerSeconds >= 600) disp.style.color = '#5dba7e';
+  else disp.style.color = '';
+  updateGoalSegments();
 }
 
 // ══════════════════════════════════════
@@ -2218,6 +2381,294 @@ function resetSync() {
   openSyncModal();
 }
 
+// ══════════════════════════════════════
+//  GAME SYSTEM
+// ══════════════════════════════════════
+const LEVEL_THRESHOLDS = [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3300, 4200, 5500, 7000, 9000, 12000, 99999];
+const LEVEL_TITLES = ['書蟲新手','好奇探索者','閱讀學徒','知識獵人','專注讀者','書林俠士','思想旅人','智識追求者','深度思考者','文字修行者','書海航行者','知識守護者','思想領航者','閱讀大師','書本傳奇'];
+const LOTTERY_REWARDS = [
+  { label: '+10 XP', rarity: 'common',    emoji: '✨', xp: 10,  prob: 0.30 },
+  { label: '+20 XP', rarity: 'common',    emoji: '⭐', xp: 20,  prob: 0.20 },
+  { label: '+30 XP', rarity: 'rare',      emoji: '🔮', xp: 30,  prob: 0.15 },
+  { label: '+50 XP', rarity: 'rare',      emoji: '💎', xp: 50,  prob: 0.15 },
+  { label: '+80 XP 史詩', rarity: 'epic',      emoji: '🎯', xp: 80,  prob: 0.08 },
+  { label: '+100 XP 史詩', rarity: 'epic',     emoji: '🌟', xp: 100, prob: 0.07 },
+  { label: '+150 XP 傳說', rarity: 'legendary', emoji: '👑', xp: 150, prob: 0.03 },
+  { label: '+200 XP 傳說！', rarity: 'legendary', emoji: '🏆', xp: 200, prob: 0.02 },
+];
+const ACHIEVEMENTS = [
+  { id:'first_open', name:'初次啟程',   desc:'第一次打開有聲書',  icon:'📖', xp:30  },
+  { id:'first10',   name:'十分鐘紀念', desc:'今日累積 10 分鐘',  icon:'⏱️', xp:20  },
+  { id:'first30',   name:'半小時勇士', desc:'今日累積 30 分鐘',  icon:'🏅', xp:50  },
+  { id:'streak3',   name:'三日之火',   desc:'連讀 3 天',         icon:'🔥', xp:50  },
+  { id:'streak7',   name:'一週習慣',   desc:'連讀 7 天',         icon:'📅', xp:100 },
+  { id:'streak30',  name:'月讀達人',   desc:'連讀 30 天',        icon:'🌙', xp:300 },
+  { id:'shield1',   name:'護盾戰士',   desc:'獲得第一個護盾',    icon:'🛡️', xp:30  },
+  { id:'lottery1',  name:'幸運開盒',   desc:'完成第一次每日抽獎', icon:'🎁', xp:20  },
+  { id:'level5',    name:'升階者',     desc:'達到 Lv.5',         icon:'⭐', xp:50  },
+  { id:'level10',   name:'書林高手',   desc:'達到 Lv.10',        icon:'💎', xp:150 },
+];
+const MILESTONES = [
+  { sec: 600,  idx: 0, title: '🔥 10分鐘！', sub: '連讀保護啟動 · XP ×2',   color: '#5dba7e' },
+  { sec: 1200, idx: 1, title: '💪 20分鐘！', sub: '連讀確認 · 護盾 +1',      color: '#4a9fd4' },
+  { sec: 1800, idx: 2, title: '🏆 30分鐘！', sub: '今日圓滿 · 每日禮盒解鎖', color: '#c9a227' },
+];
+let milestonesTriggered = new Set();
+
+function getGameState() {
+  try { return JSON.parse(localStorage.getItem('gameState') || '{}'); } catch(e) { return {}; }
+}
+function saveGameState(gs) { localStorage.setItem('gameState', JSON.stringify(gs)); }
+
+function getXP() { return getGameState().xp || 0; }
+function getLevel() {
+  const xp = getXP();
+  let lv = 1;
+  for (let i = 1; i < LEVEL_THRESHOLDS.length - 1; i++) {
+    if (xp >= LEVEL_THRESHOLDS[i]) lv = i + 1; else break;
+  }
+  return Math.min(lv, LEVEL_TITLES.length);
+}
+function getLevelTitle(lv) { return LEVEL_TITLES[Math.max(0, Math.min(lv - 1, LEVEL_TITLES.length - 1))]; }
+
+function earnXP(amount, sourceEl) {
+  if (!amount) return;
+  const gs = getGameState();
+  const oldLv = getLevel();
+  gs.xp = (gs.xp || 0) + amount;
+  saveGameState(gs);
+  const newLv = getLevel();
+  showXPFloat(amount, sourceEl);
+  updateGameUI();
+  if (newLv > oldLv) showLevelUp(newLv);
+  checkAchievements();
+}
+
+function showXPFloat(amount, sourceEl) {
+  const el = document.createElement('div');
+  el.className = 'xp-float';
+  el.textContent = '+' + amount + ' XP';
+  const anchor = sourceEl || document.getElementById('timer-display');
+  if (anchor) {
+    const r = anchor.getBoundingClientRect();
+    el.style.left = (r.left + r.width / 2) + 'px';
+    el.style.top = r.top + 'px';
+  } else { el.style.left = '50%'; el.style.top = '40%'; }
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1300);
+}
+
+function updateGameUI() {
+  const gs = getGameState();
+  const lv = getLevel();
+  const xp = gs.xp || 0;
+  const xpCur = LEVEL_THRESHOLDS[Math.min(lv - 1, LEVEL_THRESHOLDS.length - 1)];
+  const xpNext = LEVEL_THRESHOLDS[Math.min(lv, LEVEL_THRESHOLDS.length - 1)];
+  const pct = xpNext > xpCur ? Math.min(100, (xp - xpCur) / (xpNext - xpCur) * 100) : 100;
+  const el = id => document.getElementById(id);
+  if (el('level-badge')) el('level-badge').textContent = 'Lv.' + lv;
+  if (el('level-title')) el('level-title').textContent = getLevelTitle(lv);
+  if (el('xp-bar-fill')) el('xp-bar-fill').style.width = pct + '%';
+  if (el('xp-lbl')) el('xp-lbl').textContent = (xp - xpCur) + ' / ' + (xpNext - xpCur) + ' XP';
+  const shields = gs.shields || 0;
+  const shieldEl = el('shield-badge');
+  if (shieldEl) shieldEl.style.display = shields > 0 ? 'flex' : 'none';
+  if (el('shield-count')) el('shield-count').textContent = shields;
+}
+
+function updateGoalSegments() {
+  const t = timerSeconds;
+  const s0 = document.getElementById('seg0');
+  const s1 = document.getElementById('seg1');
+  const s2 = document.getElementById('seg2');
+  const gl = document.getElementById('goal-label');
+  if (s0) s0.style.width = Math.min(100, t / 600 * 100) + '%';
+  if (s1) s1.style.width = t >= 600 ? Math.min(100, (t - 600) / 600 * 100) + '%' : '0%';
+  if (s2) s2.style.width = t >= 1200 ? Math.min(100, (t - 1200) / 600 * 100) + '%' : '0%';
+  if (gl) {
+    if (t >= 1800) gl.textContent = '✓ 達標！';
+    else if (t >= 1200) gl.textContent = '30分';
+    else if (t >= 600)  gl.textContent = '20分';
+    else                gl.textContent = '10分';
+  }
+}
+
+function checkMilestones() {
+  for (const m of MILESTONES) {
+    if (timerSeconds >= m.sec && !milestonesTriggered.has(m.idx)) {
+      milestonesTriggered.add(m.idx);
+      triggerMilestone(m);
+    }
+  }
+}
+
+function triggerMilestone(m) {
+  const gs = getGameState();
+  showMilestoneToast(m.title, m.sub, m.color);
+  spawnParticles(m.idx === 2 ? 60 : m.idx === 1 ? 35 : 20, m.color);
+  if (m.idx === 0) {
+    earnXP(30, document.getElementById('timer-display'));
+  } else if (m.idx === 1) {
+    gs.shields = (gs.shields || 0) + 1;
+    saveGameState(gs);
+    updateGameUI();
+    earnXP(50, document.getElementById('timer-display'));
+    checkAchievements();
+  } else if (m.idx === 2) {
+    gs.lotteryAvailable = true;
+    saveGameState(gs);
+    earnXP(80, document.getElementById('timer-display'));
+    setTimeout(() => openLotteryModal(), 2800);
+  }
+}
+
+function showMilestoneToast(title, sub, color) {
+  const toast = document.getElementById('milestone-toast');
+  if (!toast) return;
+  toast.querySelector('.toast-title').textContent = title;
+  toast.querySelector('.toast-sub').textContent = sub;
+  toast.style.borderColor = color || 'var(--gold)';
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+function spawnParticles(count, color) {
+  const colors = color ? [color] : ['#c9a227','#5dba7e','#4a9fd4','#fff'];
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = 5 + Math.random() * 7;
+      const tx = (Math.random() - 0.5) * 200;
+      const ty = -60 - Math.random() * 120;
+      const d = 0.5 + Math.random() * 1;
+      p.style.cssText = `left:${15+Math.random()*70}%;top:${20+Math.random()*50}%;width:${size}px;height:${size}px;background:${colors[Math.floor(Math.random()*colors.length)]};--tx:${tx}px;--ty:${ty}px;--d:${d}s`;
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), d * 1000 + 100);
+    }, Math.random() * 400);
+  }
+}
+
+function showLevelUp(lv) {
+  const overlay = document.getElementById('levelup-overlay');
+  if (!overlay) return;
+  const lvEl = document.getElementById('lu-level');
+  const titleEl = document.getElementById('lu-title');
+  if (lvEl) lvEl.textContent = 'Lv.' + lv;
+  if (titleEl) titleEl.textContent = getLevelTitle(lv);
+  overlay.classList.remove('show');
+  void overlay.offsetWidth;
+  overlay.classList.add('show');
+  spawnParticles(60, '#c9a227');
+  setTimeout(() => overlay.classList.remove('show'), 2900);
+}
+
+// ── Lottery ──
+function drawLottery() {
+  const r = Math.random();
+  let cum = 0;
+  for (const reward of LOTTERY_REWARDS) {
+    cum += reward.prob;
+    if (r <= cum) return reward;
+  }
+  return LOTTERY_REWARDS[0];
+}
+
+function openLotteryModal() {
+  const gs = getGameState();
+  const today = new Date().toISOString().slice(0, 10);
+  if (gs.lotteryUsedDate === today) return;
+  const modal = document.getElementById('lottery-modal');
+  const box = document.getElementById('lottery-box');
+  const card = document.getElementById('lottery-card');
+  const closeBtn = document.getElementById('lottery-close-btn');
+  if (!modal) return;
+  if (box) { box.textContent = '🎁'; box.style.animation = ''; box.onclick = clickLotteryBox; }
+  if (card) { card.innerHTML = ''; card.className = ''; }
+  if (closeBtn) closeBtn.style.display = 'none';
+  modal.classList.add('open');
+}
+
+function clickLotteryBox() {
+  const gs = getGameState();
+  const today = new Date().toISOString().slice(0, 10);
+  if (gs.lotteryUsedDate === today) return;
+  gs.lotteryAvailable = false;
+  gs.lotteryUsedDate = today;
+  saveGameState(gs);
+
+  const box = document.getElementById('lottery-box');
+  const card = document.getElementById('lottery-card');
+  const closeBtn = document.getElementById('lottery-close-btn');
+  if (box) { box.onclick = null; box.classList.add('shake'); }
+
+  setTimeout(() => {
+    const reward = drawLottery();
+    if (box) { box.textContent = reward.emoji; box.classList.remove('shake'); }
+    if (card) {
+      const rarityNames = { common:'普通', rare:'稀有', epic:'史詩', legendary:'傳說！' };
+      card.className = 'show rarity-' + reward.rarity;
+      card.innerHTML = `<div class="l-rarity">${rarityNames[reward.rarity]}</div><div class="l-icon">${reward.emoji}</div><div class="l-name">${reward.label}</div>`;
+    }
+    const particleColor = reward.rarity === 'legendary' ? '#ffd700' : reward.rarity === 'epic' ? '#9b59b6' : '#c9a227';
+    const particleCount = reward.rarity === 'legendary' ? 80 : reward.rarity === 'epic' ? 50 : 25;
+    spawnParticles(particleCount, particleColor);
+    earnXP(reward.xp, box);
+    if (closeBtn) closeBtn.style.display = 'block';
+    checkAchievements();
+  }, 650);
+}
+
+function closeLotteryModal() {
+  const modal = document.getElementById('lottery-modal');
+  if (modal) modal.classList.remove('open');
+}
+
+// ── Achievements ──
+function checkAchievements() {
+  const gs = getGameState();
+  const unlocked = gs.achievements || [];
+  const streak = typeof calcStreak === 'function' ? calcStreak() : 0;
+  const lv = getLevel();
+
+  const checks = {
+    first_open: true,
+    first10:    timerSeconds >= 600,
+    first30:    timerSeconds >= 1800,
+    streak3:    streak >= 3,
+    streak7:    streak >= 7,
+    streak30:   streak >= 30,
+    shield1:    (gs.shields || 0) >= 1,
+    lottery1:   !!gs.lotteryUsedDate,
+    level5:     lv >= 5,
+    level10:    lv >= 10,
+  };
+
+  let changed = false;
+  for (const ach of ACHIEVEMENTS) {
+    if (!unlocked.includes(ach.id) && checks[ach.id]) {
+      unlocked.push(ach.id);
+      gs.xp = (gs.xp || 0) + ach.xp;
+      changed = true;
+      showAchievementPopup(ach);
+      break;
+    }
+  }
+  if (changed) { gs.achievements = unlocked; saveGameState(gs); updateGameUI(); }
+}
+
+function showAchievementPopup(ach) {
+  const popup = document.getElementById('achievement-popup');
+  if (!popup) return;
+  popup.querySelector('.ach-icon').textContent = ach.icon;
+  popup.querySelector('.ach-name').textContent = ach.name;
+  popup.querySelector('.ach-desc').textContent = ach.desc;
+  popup.classList.remove('show');
+  void popup.offsetWidth;
+  popup.classList.add('show');
+  setTimeout(() => popup.classList.remove('show'), 3800);
+}
+
 // ── INIT ──
 initFirebase();
 pullTtsSettings();
@@ -2238,6 +2689,10 @@ if (!localStorage.getItem('vapidPublicKey')) {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/audiobook/sw.js').catch(() => {});
 }
+
+// 遊戲系統初始化
+updateGameUI();
+checkAchievements();
 </script>
 </body>
 </html>
