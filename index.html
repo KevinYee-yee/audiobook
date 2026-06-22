@@ -1155,10 +1155,12 @@ async function openBook(id) {
 
   showReaderState('content');
   enableControls(true);
+  startReadTimer(); // 打開書就開始計時，不需要播放
 }
 
 // ── back to library ──
 async function goLibrary() {
+  stopReadTimer(); // 離開書本才停止計時
   await saveNow();
   stopSpeech();
   if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
@@ -1369,7 +1371,6 @@ function speakSentence(idx) {
   document.getElementById('btn-play').textContent = '⏸';
   document.getElementById('btn-stop').disabled = false;
   document.getElementById('btn-step').disabled = false;
-  startTimer();
   highlightSentence(idx);
   saveProgress();
 
@@ -1521,6 +1522,9 @@ function stopTimer() {
   clearInterval(timerInterval); timerInterval = null;
   if (logAccum > 0) { logTodaySeconds(logAccum); logAccum = 0; }
 }
+// 計時 = 打開書就開始，不需要播放
+function startReadTimer() { startTimer(); }
+function stopReadTimer() { stopTimer(); }
 function updateTimer() {
   const m = String(Math.floor(timerSeconds / 60)).padStart(2,'0');
   const s = String(timerSeconds % 60).padStart(2,'0');
