@@ -2,7 +2,7 @@ name: Daily Reading Reminder
 
 on:
   schedule:
-    - cron: '0 13 * * *'  # 每天 21:00 台灣時間 (UTC+8 = UTC 13:00)
+    - cron: '30 14 * * *'  # 每天 22:30 台灣時間 (UTC+8 = UTC 14:30)
   workflow_dispatch:       # 可手動觸發測試
 
 jobs:
