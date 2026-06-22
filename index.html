@@ -478,7 +478,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 }
 @keyframes pxGlow { from{filter:drop-shadow(0 0 4px var(--gold))} to{filter:drop-shadow(0 0 14px var(--gold))} }
 #px-bubble {
-  position: absolute; bottom: 78px; right: 0;
+  position: absolute; bottom: 88px; right: 0;
   background: var(--surface); border: 1.5px solid var(--gold-dim); border-radius: 10px 10px 2px 10px;
   padding: 7px 11px; font-size: 11px; color: var(--text); line-height: 1.45;
   max-width: 150px; white-space: normal;
@@ -2746,31 +2746,65 @@ function showAchievementPopup(ach) {
 }
 
 // ══════════════════════════════════════
-//  PIXEL CHARACTER
+//  PIXEL CHARACTER — Digimon-style creature
 // ══════════════════════════════════════
+// Colors: 0=transparent 1=dark 2=body 3=highlight 4=eye-white
+// Fire:   5=yellow-white 6=gold-yellow 7=orange 8=red-base
 const PX_SCALE = 4;
-const PX_CHAR_DATA = [
-//  0  1  2  3  4  5  6  7  8  9 10 11
-  [ 0, 0, 1, 2, 2, 2, 2, 2, 2, 1, 0, 0 ], // hair top
-  [ 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0 ], // hair
-  [ 0, 1, 2, 3, 3, 3, 3, 3, 3, 2, 1, 0 ], // face top
-  [ 0, 1, 2, 3, 1, 3, 3, 1, 3, 2, 1, 0 ], // eyes
-  [ 0, 1, 2, 3, 3, 3, 3, 3, 3, 2, 1, 0 ], // nose
-  [ 0, 1, 2, 3, 3, 1, 1, 3, 3, 2, 1, 0 ], // mouth
-  [ 0, 1, 2, 2, 3, 3, 3, 3, 2, 2, 1, 0 ], // chin (hair sides)
-  [ 0, 0, 1, 2, 2, 2, 2, 2, 2, 1, 0, 0 ], // head bottom
-  [ 0, 0, 0, 1, 3, 3, 3, 3, 1, 0, 0, 0 ], // neck
-  [ 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0 ], // shoulders
-  [ 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1 ], // body
-  [ 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1 ], // body
-  [ 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1 ], // body
-  [ 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0 ], // waist
-  [ 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0 ], // skirt
-  [ 0, 0, 1, 3, 3, 1, 1, 3, 3, 1, 0, 0 ], // legs
-  [ 0, 0, 1, 3, 3, 1, 1, 3, 3, 1, 0, 0 ], // legs
-  [ 0, 0, 1, 1, 3, 0, 0, 3, 1, 1, 0, 0 ], // feet
+const PX_W = 16, PX_H = 20;
+
+// Static body (rows 0-4 = fire zone = transparent)
+const PX_BODY = [
+//  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ], // 0  fire zone
+  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ], // 1  fire zone
+  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ], // 2  fire zone
+  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ], // 3  fire zone
+  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ], // 4  fire zone
+  [ 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0 ], // 5  head top arc
+  [ 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0 ], // 6  head
+  [ 0, 0, 1, 2, 2, 3, 2, 2, 2, 2, 3, 2, 2, 1, 0, 0 ], // 7  highlights
+  [ 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0 ], // 8  head
+  [ 0, 1, 2, 2, 4, 4, 2, 2, 2, 4, 4, 2, 2, 2, 1, 0 ], // 9  eyes (white)
+  [ 0, 1, 2, 2, 4, 1, 2, 2, 2, 4, 1, 2, 2, 2, 1, 0 ], // 10 pupils
+  [ 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0 ], // 11 nose area
+  [ 0, 1, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 1, 0 ], // 12 mouth corners
+  [ 0, 1, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 1, 0 ], // 13 mouth
+  [ 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0 ], // 14 chin
+  [ 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0 ], // 15 body top
+  [ 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0 ], // 16 body
+  [ 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 1, 1, 0, 0, 0, 0 ], // 17 leg divide
+  [ 0, 0, 0, 1, 2, 2, 0, 0, 0, 2, 2, 1, 0, 0, 0, 0 ], // 18 legs
+  [ 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0 ], // 19 feet
 ];
-const PX_W = 12, PX_H = PX_CHAR_DATA.length;
+
+// 3 animated fire frames (rows 0-4)
+const PX_FIRE = [
+  [ // frame 0 — centered
+    [0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,6,5,6,0,0,0,0,0,0,0],
+    [0,0,0,0,0,6,7,5,7,6,0,0,0,0,0,0],
+    [0,0,0,0,7,7,6,6,6,7,7,0,0,0,0,0],
+    [0,0,0,8,7,7,6,6,6,7,7,8,0,0,0,0],
+  ],
+  [ // frame 1 — lean left
+    [0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,6,5,6,0,0,0,0,0,0,0,0],
+    [0,0,0,0,7,6,5,7,6,0,0,0,0,0,0,0],
+    [0,0,0,7,7,6,6,5,7,7,0,0,0,0,0,0],
+    [0,0,0,8,7,7,6,6,6,7,7,8,0,0,0,0],
+  ],
+  [ // frame 2 — lean right
+    [0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,6,5,6,0,0,0,0,0,0],
+    [0,0,0,0,0,7,6,5,6,7,0,0,0,0,0,0],
+    [0,0,0,0,7,7,6,6,6,7,7,0,0,0,0,0],
+    [0,0,0,8,7,7,6,6,6,7,7,8,0,0,0,0],
+  ],
+];
+
+// Fire palette (indices 5-8)
+const PX_FIRE_PAL = { 5:'#fffde0', 6:'#ffd740', 7:'#ff6d00', 8:'#b71c1c' };
 
 const PX_MSGS_IDLE = [
   '讀書是最棒的冒險 📖',
@@ -2781,10 +2815,12 @@ const PX_MSGS_IDLE = [
   '知識就是力量 💪',
   '你是最棒的讀者！',
   '一起衝破 30 分鐘吧！',
-  '連讀下去，火焰不滅 🔥',
+  '燃燒吧，火焰精靈！🔥',
 ];
 
 let pxBubbleTimer = null;
+let pxFireFrame = 0;
+let pxFireInterval = null;
 
 function initPxChar() {
   const canvas = document.getElementById('px-char-canvas');
@@ -2796,6 +2832,11 @@ function initPxChar() {
   canvas.style.width = lw + 'px';
   canvas.style.height = lh + 'px';
   pxDraw();
+  if (pxFireInterval) clearInterval(pxFireInterval);
+  pxFireInterval = setInterval(() => {
+    pxFireFrame = (pxFireFrame + 1) % 3;
+    pxDraw();
+  }, 180);
 }
 
 function pxDraw() {
@@ -2805,22 +2846,41 @@ function pxDraw() {
   const dpr = window.devicePixelRatio || 1;
   const gs = getGameState();
   const outfit = gs.outfit || {};
-  // color index: 0=transparent, 1=dark, 2=hair(gold), 3=skin, 4=clothes
-  const pal = [null, '#111111', '#c9a227', '#f5c891', outfit.c4 || '#7c52b8'];
+  const bodyC = outfit.c4 || '#5db8e0';
+  // lighten body color for highlight
+  const hlC = outfit.c5 || (() => {
+    const r = Math.min(255, parseInt(bodyC.slice(1,3),16)+50).toString(16).padStart(2,'0');
+    const g = Math.min(255, parseInt(bodyC.slice(3,5),16)+50).toString(16).padStart(2,'0');
+    const b = Math.min(255, parseInt(bodyC.slice(5,7),16)+50).toString(16).padStart(2,'0');
+    return '#'+r+g+b;
+  })();
+  // palette: 0=null 1=dark 2=body 3=highlight 4=eye-white
+  const pal = [null, '#111111', bodyC, hlC, '#ffffff'];
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (let r = 0; r < PX_CHAR_DATA.length; r++) {
-    for (let c = 0; c < PX_CHAR_DATA[r].length; c++) {
-      const ci = PX_CHAR_DATA[r][c];
-      if (!ci || !pal[ci]) continue;
+
+  // Draw static body
+  for (let row = 0; row < PX_BODY.length; row++) {
+    for (let col = 0; col < PX_BODY[row].length; col++) {
+      const ci = PX_BODY[row][col];
+      if (!ci) continue;
       ctx.fillStyle = pal[ci];
-      ctx.fillRect(c * PX_SCALE * dpr, r * PX_SCALE * dpr, PX_SCALE * dpr, PX_SCALE * dpr);
+      ctx.fillRect(col * PX_SCALE * dpr, row * PX_SCALE * dpr, PX_SCALE * dpr, PX_SCALE * dpr);
     }
   }
-  // lottery-ready glow indicator on wrapper
-  const gs2 = getGameState();
+  // Draw animated fire (rows 0-4)
+  const frame = PX_FIRE[pxFireFrame];
+  for (let row = 0; row < frame.length; row++) {
+    for (let col = 0; col < frame[row].length; col++) {
+      const ci = frame[row][col];
+      if (!ci) continue;
+      ctx.fillStyle = PX_FIRE_PAL[ci];
+      ctx.fillRect(col * PX_SCALE * dpr, row * PX_SCALE * dpr, PX_SCALE * dpr, PX_SCALE * dpr);
+    }
+  }
+  // Lottery-ready glow
   const today = new Date().toISOString().slice(0, 10);
-  const lotteryReady = gs2.lotteryAvailable && gs2.lotteryUsedDate !== today;
+  const lotteryReady = gs.lotteryAvailable && gs.lotteryUsedDate !== today;
   document.getElementById('px-char-wrap')?.classList.toggle('lottery-ready', !!lotteryReady);
 }
 
