@@ -785,11 +785,11 @@ async function logTodaySeconds(delta) {
     };
     tx.oncomplete = res; tx.onerror = () => rej(tx.error);
   });
-  // 告訴 GitHub Actions 今天有讀書 → 不用發通知
+  // 記錄最後讀書時間戳（毫秒），供通知判斷用
   if (syncEnabled && syncDbUrl && syncKey) {
-    fetch(syncUrl('lastReadDate'), {
+    fetch(syncUrl('lastReadTime'), {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(date)
+      body: JSON.stringify(Date.now())
     }).catch(() => {});
   }
 }
