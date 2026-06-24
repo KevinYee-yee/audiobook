@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#0f0f0f">
 <title>有聲書庫</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -635,7 +636,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
       <button id="lib-sync-btn" onclick="openSyncModal()" title="跨裝置同步">☁</button>
       <button id="add-btn" onclick="document.getElementById('file-input').click()">＋ 新增書籍</button>
     </div>
-    <input type="file" id="file-input" accept=".pdf">
+    <input type="file" id="file-input" accept=".pdf,.epub">
   </div>
   <!-- Level + XP -->
   <div id="lib-game-row">
@@ -1165,63 +1166,189 @@ document.getElementById('file-input').addEventListener('change', async (e) => {
   addBtn.textContent = '解析中…'; addBtn.disabled = true;
 
   try {
-    const id = 'book_' + Date.now();
-    const title = file.name.replace(/\.pdf$/i, '');
-    const pdfData = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-    const total = pdf.numPages;
-
-    // 封面
-    const cover = await renderCoverFromDoc(pdf);
-
-    // 提取章節目錄
-    let outline = null;
-    try {
-      const raw = await pdf.getOutline();
-      if (raw?.length) {
-        const chapters = [];
-        for (const item of raw) {
-          try {
-            let dest = item.dest;
-            if (typeof dest === 'string') dest = await pdf.getDestination(dest);
-            if (Array.isArray(dest) && dest[0] != null) {
-              const pageIdx = typeof dest[0] === 'number'
-                ? dest[0] : await pdf.getPageIndex(dest[0]);
-              chapters.push({ title: item.title, page: pageIdx + 1 });
-            }
-          } catch(e) {}
-        }
-        if (chapters.length) outline = chapters;
-      }
-    } catch(e) {}
-
-    // 全部頁面文字一次提取，不儲存 PDF 二進位（省 10-50 倍空間）
-    const allTexts = {};
-    for (let i = 1; i <= total; i++) {
-      addBtn.textContent = `解析 ${i}/${total}…`;
-      const pg = await pdf.getPage(i);
-      const c = await pg.getTextContent();
-      allTexts[i] = c.items.map(it => it.str).join('');
-      pg.cleanup();
+    const isEpub = file.name.toLowerCase().endsWith('.epub');
+    if (isEpub) {
+      await importEpub(file, addBtn);
+    } else {
+      await importPdf(file, addBtn);
     }
-
-    const book = {
-      id, title, cover,
-      pageTexts: allTexts,   // 只存文字
-      outline,               // 章節目錄（若 PDF 有提供）
-      totalPages: total,
-      lastPage: 1, lastSentence: 0, timerSeconds: 0,
-      addedAt: Date.now(), lastOpened: Date.now()
-    };
-    await dbPut(book);
-    pushBookToCloud(book); // 同步到雲端（不阻塞 UI）
-    openBook(id);
   } catch(err) {
     alert('上傳失敗：' + (err.message || err));
   } finally {
     addBtn.textContent = '＋ 新增書籍'; addBtn.disabled = false;
   }
 });
+
+async function importPdf(file, addBtn) {
+  const id = 'book_' + Date.now();
+  const title = file.name.replace(/\.pdf$/i, '');
+  const pdfData = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+  const total = pdf.numPages;
+
+  const cover = await renderCoverFromDoc(pdf);
+
+  let outline = null;
+  try {
+    const raw = await pdf.getOutline();
+    if (raw?.length) {
+      const chapters = [];
+      for (const item of raw) {
+        try {
+          let dest = item.dest;
+          if (typeof dest === 'string') dest = await pdf.getDestination(dest);
+          if (Array.isArray(dest) && dest[0] != null) {
+            const pageIdx = typeof dest[0] === 'number'
+              ? dest[0] : await pdf.getPageIndex(dest[0]);
+            chapters.push({ title: item.title, page: pageIdx + 1 });
+          }
+        } catch(e) {}
+      }
+      if (chapters.length) outline = chapters;
+    }
+  } catch(e) {}
+
+  const allTexts = {};
+  for (let i = 1; i <= total; i++) {
+    addBtn.textContent = `解析 ${i}/${total}…`;
+    const pg = await pdf.getPage(i);
+    const c = await pg.getTextContent();
+    allTexts[i] = c.items.map(it => it.str).join('');
+    pg.cleanup();
+  }
+
+  const book = {
+    id, title, cover,
+    pageTexts: allTexts,
+    outline,
+    totalPages: total,
+    lastPage: 1, lastSentence: 0, timerSeconds: 0,
+    addedAt: Date.now(), lastOpened: Date.now()
+  };
+  await dbPut(book);
+  pushBookToCloud(book);
+  openBook(id);
+}
+
+async function importEpub(file, addBtn) {
+  const id = 'book_' + Date.now();
+  const title = file.name.replace(/\.epub$/i, '');
+  const data = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(data);
+
+  // 1. 找 OPF 路徑
+  const containerXml = await zip.file('META-INF/container.xml')?.async('text');
+  if (!containerXml) throw new Error('無效的 EPUB：找不到 container.xml');
+  const opfPath = containerXml.match(/full-path="([^"]+\.opf)"/i)?.[1];
+  if (!opfPath) throw new Error('無效的 EPUB：找不到 OPF 路徑');
+
+  const opfDir = opfPath.includes('/') ? opfPath.replace(/\/[^/]+$/, '/') : '';
+  const opfXml = await zip.file(opfPath)?.async('text');
+  if (!opfXml) throw new Error('無法讀取 OPF 檔案');
+
+  // 2. 解析書名
+  const titleMatch = opfXml.match(/<dc:title[^>]*>([^<]+)<\/dc:title>/i);
+  const bookTitle = titleMatch?.[1]?.trim() || title;
+
+  // 3. 解析 manifest（id → href）
+  const manifest = {};
+  for (const m of opfXml.matchAll(/<item\s+[^>]*id="([^"]+)"[^>]*href="([^"]+)"[^>]*\/?>/gi)) {
+    manifest[m[1]] = m[2];
+  }
+
+  // 4. 解析 spine（章節順序）
+  const spineIds = [...opfXml.matchAll(/<itemref\s+idref="([^"]+)"/gi)].map(m => m[1]);
+
+  // 5. 找封面圖片
+  let cover = null;
+  try {
+    const coverItemId = opfXml.match(/properties="cover-image"[^>]*id="([^"]+)"/i)?.[1]
+      || opfXml.match(/<meta\s+name="cover"\s+content="([^"]+)"/i)?.[1];
+    const coverHref = coverItemId && manifest[coverItemId];
+    if (coverHref) {
+      const imgPath = opfDir + coverHref;
+      const imgBlob = await zip.file(imgPath)?.async('blob');
+      if (imgBlob) {
+        const imgUrl = URL.createObjectURL(imgBlob);
+        cover = await new Promise(resolve => {
+          const img = new Image();
+          img.onload = () => {
+            const cv = document.createElement('canvas');
+            cv.width = 120; cv.height = 160;
+            const ctx = cv.getContext('2d');
+            ctx.drawImage(img, 0, 0, 120, 160);
+            URL.revokeObjectURL(imgUrl);
+            resolve(cv.toDataURL('image/jpeg', 0.7));
+          };
+          img.onerror = () => { URL.revokeObjectURL(imgUrl); resolve(null); };
+          img.src = imgUrl;
+        });
+      }
+    }
+  } catch(e) {}
+
+  // 封面 fallback：生成文字封面
+  if (!cover) {
+    const cv = document.createElement('canvas');
+    cv.width = 120; cv.height = 160;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#1e2a3a';
+    ctx.fillRect(0, 0, 120, 160);
+    ctx.fillStyle = '#c9a227';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    const words = bookTitle.split(/\s+/);
+    let y = 70;
+    for (const w of words.slice(0, 4)) {
+      ctx.fillText(w, 60, y); y += 16;
+    }
+    cover = cv.toDataURL('image/jpeg', 0.8);
+  }
+
+  // 6. 提取各章節文字（每章 = 1 page）
+  const allTexts = {};
+  const outline = [];
+  let pageIdx = 1;
+
+  for (let i = 0; i < spineIds.length; i++) {
+    addBtn.textContent = `解析 ${i + 1}/${spineIds.length}…`;
+    const href = manifest[spineIds[i]];
+    if (!href) continue;
+    const filePath = opfDir + href.replace(/#.*$/, '');
+    const html = await zip.file(filePath)?.async('text');
+    if (!html) continue;
+
+    // 移除 HTML 標籤、取純文字
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    const text = (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+
+    // 章節標題嘗試從 h1/h2 取
+    const hMatch = html.match(/<h[12][^>]*>([^<]+)<\/h[12]>/i);
+    const chTitle = hMatch?.[1]?.trim() || `第 ${pageIdx} 章`;
+
+    allTexts[pageIdx] = text;
+    outline.push({ title: chTitle, page: pageIdx });
+    pageIdx++;
+  }
+
+  if (pageIdx === 1) throw new Error('EPUB 解析失敗：無法提取文字內容');
+
+  const book = {
+    id, title: bookTitle, cover,
+    pageTexts: allTexts,
+    outline: outline.length > 1 ? outline : null,
+    totalPages: pageIdx - 1,
+    lastPage: 1, lastSentence: 0, timerSeconds: 0,
+    addedAt: Date.now(), lastOpened: Date.now()
+  };
+  await dbPut(book);
+  pushBookToCloud(book);
+  openBook(id);
+}
 
 async function deleteBook(e, id) {
   e.stopPropagation();
