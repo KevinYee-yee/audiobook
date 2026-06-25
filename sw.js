@@ -1,8 +1,11 @@
-const CACHE_VER = 'v4';
+const CACHE_VER = 'v5';
 const CACHE_NAME = 'audiobook-' + CACHE_VER;
 
+self.addEventListener('message', e => {
+  if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
 self.addEventListener('install', e => {
-  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
       cache.add(new Request('/audiobook/', { cache: 'reload' }))

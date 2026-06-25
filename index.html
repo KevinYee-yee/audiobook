@@ -626,6 +626,10 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 </style>
 </head>
 <body>
+<div id="update-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#c9a227;color:#1a1a1a;padding:12px 16px;align-items:center;justify-content:space-between;gap:12px;font-size:14px;font-weight:600;">
+  <span>🆕 有新版本可用</span>
+  <button onclick="applyUpdate()" style="background:#1a1a1a;color:#c9a227;border:none;padding:6px 16px;border-radius:8px;font-weight:700;font-size:13px;">立即更新</button>
+</div>
 
 <!-- ═══════════ LIBRARY SCREEN ═══════════ -->
 <div class="screen" id="screen-library">
@@ -3013,7 +3017,32 @@ if (!localStorage.getItem('vapidPublicKey')) {
 
 // Service Worker 註冊
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/audiobook/sw.js').catch(() => {});
+  navigator.serviceWorker.register('/audiobook/sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      newSW.addEventListener('statechange', () => {
+        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdateBanner();
+        }
+      });
+    });
+  }).catch(() => {});
+  // 新 SW 接管後自動重載
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) { refreshing = true; window.location.reload(); }
+  });
+}
+
+function showUpdateBanner() {
+  const banner = document.getElementById('update-banner');
+  if (banner) banner.style.display = 'flex';
+}
+function applyUpdate() {
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    else window.location.reload();
+  });
 }
 
 // 遊戲系統初始化
