@@ -445,8 +445,9 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 /* ── Pixel Character ── */
 #px-char-wrap {
   position: fixed; bottom: calc(100px + var(--safe-b)); right: 14px;
-  z-index: 490; cursor: pointer; user-select: none; -webkit-user-select: none;
+  z-index: 490; cursor: grab; user-select: none; -webkit-user-select: none;
 }
+#px-char-wrap:active { cursor: grabbing; }
 #px-char-inner {
   animation: pxBob 2.6s ease-in-out infinite;
   transform-origin: bottom center;
@@ -1654,6 +1655,7 @@ async function renderPage(n, startSentence = 0) {
   if (startSentence > 0) highlightSentence(startSentence, false);
   document.getElementById('reader').scrollTop = 0;
   saveProgress();
+  await new Promise(r => requestAnimationFrame(r));
 }
 
 function splitSentences(text) {
@@ -1681,7 +1683,7 @@ function highlightSentence(idx, scroll = true) {
   });
   if (scroll) {
     const el = document.querySelector(`.sentence[data-idx="${idx}"]`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (el) el.scrollIntoView({ behavior: 'instant', block: 'center' });
   }
   document.getElementById('sentence-info').textContent =
     sentences.length ? `${idx + 1} / ${sentences.length}` : '';
@@ -2005,8 +2007,25 @@ function renderSentences() {
   }
 }
 
-// Long press on sentence → note popup
-let lpTimer = null;
+// Long press on sentence → note popup; short tap → jump to sentence
+let lpTimer = null, _lastTapHandled = 0;
+
+function jumpToSentence(idx) {
+  if (idx < 0 || idx >= sentences.length) return;
+  const wasActive = speaking || paused;
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  prefetchIdx = -1; prefetchBlob = null;
+  speechSynthesis.cancel();
+  clearInterval(speechWatchdog);
+  if (wasActive) {
+    paused = false;
+    speakSentence(idx);
+  } else {
+    sentenceIdx = idx;
+    highlightSentence(idx);
+  }
+}
+
 document.getElementById('page-content').addEventListener('touchstart', e => {
   const el = e.target.closest('.sentence');
   if (!el) return;
@@ -2015,10 +2034,22 @@ document.getElementById('page-content').addEventListener('touchstart', e => {
 document.getElementById('page-content').addEventListener('touchmove', () => {
   if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
 }, { passive: true });
-document.getElementById('page-content').addEventListener('touchend', () => {
-  if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+document.getElementById('page-content').addEventListener('touchend', e => {
+  if (lpTimer) {
+    clearTimeout(lpTimer); lpTimer = null;
+    // short tap → jump
+    const el = e.target.closest('.sentence');
+    if (el) { _lastTapHandled = Date.now(); jumpToSentence(parseInt(el.dataset.idx)); }
+  }
 }, { passive: true });
-// Desktop: right click
+// Desktop click (skip if a touch tap already handled it)
+document.getElementById('page-content').addEventListener('click', e => {
+  if (Date.now() - _lastTapHandled < 600) return;
+  const el = e.target.closest('.sentence');
+  if (!el) return;
+  jumpToSentence(parseInt(el.dataset.idx));
+});
+// Desktop: right click → note popup
 document.getElementById('page-content').addEventListener('contextmenu', e => {
   const el = e.target.closest('.sentence');
   if (!el) return;
@@ -3045,10 +3076,84 @@ function applyUpdate() {
   });
 }
 
+function initDraggable() {
+  const wrap = document.getElementById('px-char-wrap');
+  if (!wrap) return;
+  let dragging = false, hasDragged = false;
+  let startX, startY, startLeft, startTop;
+
+  function toLeftTop() {
+    const rect = wrap.getBoundingClientRect();
+    wrap.style.right = ''; wrap.style.bottom = '';
+    wrap.style.left = rect.left + 'px'; wrap.style.top = rect.top + 'px';
+  }
+  function clampPos() {
+    const l = parseFloat(wrap.style.left), t = parseFloat(wrap.style.top);
+    const maxL = window.innerWidth - wrap.offsetWidth - 4;
+    const maxT = window.innerHeight - wrap.offsetHeight - 4;
+    wrap.style.left = Math.max(4, Math.min(maxL, l)) + 'px';
+    wrap.style.top  = Math.max(4, Math.min(maxT, t)) + 'px';
+  }
+
+  function dragStart(x, y) {
+    toLeftTop();
+    dragging = true; hasDragged = false;
+    startX = x; startY = y;
+    startLeft = parseFloat(wrap.style.left); startTop = parseFloat(wrap.style.top);
+  }
+  function dragMove(x, y) {
+    if (!dragging) return;
+    const dx = x - startX, dy = y - startY;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasDragged = true;
+    if (!hasDragged) return;
+    wrap.style.left = (startLeft + dx) + 'px';
+    wrap.style.top  = (startTop  + dy) + 'px';
+  }
+  function dragEnd() {
+    if (!dragging) return;
+    dragging = false;
+    if (hasDragged) {
+      clampPos();
+      localStorage.setItem('pxCharPos', JSON.stringify({ l: wrap.style.left, t: wrap.style.top }));
+    }
+  }
+
+  // Touch
+  wrap.addEventListener('touchstart', e => dragStart(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+  wrap.addEventListener('touchmove', e => {
+    dragMove(e.touches[0].clientX, e.touches[0].clientY);
+    if (hasDragged) e.preventDefault();
+  }, { passive: false });
+  wrap.addEventListener('touchend', e => {
+    dragEnd();
+    if (hasDragged) e.preventDefault(); // block synthetic click after drag
+  }, { passive: false });
+
+  // Mouse
+  wrap.addEventListener('mousedown', e => {
+    e.preventDefault();
+    dragStart(e.clientX, e.clientY);
+    const onMove = ev => dragMove(ev.clientX, ev.clientY);
+    const onUp   = () => { dragEnd(); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  // Block pxTap when drag occurred
+  wrap.addEventListener('click', e => { if (hasDragged) e.stopImmediatePropagation(); }, true);
+
+  // Restore saved position
+  try {
+    const s = JSON.parse(localStorage.getItem('pxCharPos') || 'null');
+    if (s?.l && s?.t) { wrap.style.right = ''; wrap.style.bottom = ''; wrap.style.left = s.l; wrap.style.top = s.t; }
+  } catch {}
+}
+
 // 遊戲系統初始化
 updateGameUI();
 checkAchievements();
 initPxChar();
+initDraggable();
 </script>
 </body>
 </html>
