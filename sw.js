@@ -1,4 +1,4 @@
-const CACHE_VER = 'v5';
+const CACHE_VER = 'v6';
 const CACHE_NAME = 'audiobook-' + CACHE_VER;
 
 self.addEventListener('message', e => {

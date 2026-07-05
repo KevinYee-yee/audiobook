@@ -453,7 +453,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
   transform-origin: bottom center;
   filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
 }
-#px-char-canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+#px-char-img { display: block; width: 110px; height: 110px; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; }
 @keyframes pxBob { 0%,100%{transform:translateY(0) scaleY(1)} 48%{transform:translateY(-6px) scaleY(1.04)} 52%{transform:translateY(-6px) scaleY(1.04)} }
 #px-char-inner.px-jump {
   animation: pxJumpA 0.55s cubic-bezier(.4,0,.2,1);
@@ -817,7 +817,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 <div id="px-char-wrap" onclick="pxTap()">
   <div id="px-bubble"></div>
   <div id="px-char-inner">
-    <canvas id="px-char-canvas"></canvas>
+    <img id="px-char-img" src="/audiobook/mascot.gif" alt="小夥伴" draggable="false">
   </div>
 </div>
 
@@ -2909,38 +2909,8 @@ function showAchievementPopup(ach) {
 }
 
 // ══════════════════════════════════════
-//  PIXEL CHARACTER — 耳機章魚吉祥物
+//  PIXEL CHARACTER — 耳機章魚吉祥物（mascot.gif）
 // ══════════════════════════════════════
-// 0=transparent 1=dark 2=body(orange) 3=body-highlight 4=hp-band(blue) 5=hp-pad(light)
-const PX_SCALE = 5;
-const PX_W = 20, PX_H = 20;
-
-const PX_BODY = [
-//  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19
-  [ 0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0 ], // 0  耳機帶
-  [ 1, 4, 5, 5, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 5, 5, 4, 1 ], // 1  耳罩（深色外框）＋頭
-  [ 1, 4, 5, 5, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 5, 5, 4, 1 ], // 2  耳罩＋頭
-  [ 1, 4, 5, 5, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 5, 5, 4, 1 ], // 3  耳罩＋頭
-  [ 1, 4, 5, 5, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 5, 5, 4, 1 ], // 4  耳罩＋頭
-  [ 1, 4, 5, 5, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 5, 5, 4, 1 ], // 5  耳罩＋頭
-  [ 0, 1, 1, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 1, 1, 0 ], // 6  耳罩底角
-  [ 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0 ], // 7  頭頂
-  [ 0, 0, 0, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 3, 2, 2, 1, 0, 0, 0 ], // 8  臉＋高光
-  [ 0, 0, 0, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 0, 0, 0 ], // 9  眼睛頂（外角）
-  [ 0, 0, 0, 1, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 1, 0, 0, 0 ], // 10 眼睛底（╰╯ 弧底）
-  [ 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0 ], // 11 臉
-  [ 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0, 0 ], // 12 下巴
-  [ 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0 ], // 13 身體上
-  [ 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 ], // 14 身體＋手臂
-  [ 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2 ], // 15 身體＋手臂
-  [ 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 0, 0 ], // 16 身體底
-  [ 0, 0, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 0 ], // 17 4 條腿
-  [ 0, 0, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 0 ], // 18 4 條腿
-  [ 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0 ], // 19 腳底
-];
-// Blink: row 9 eyes（cols 5-7, 11-13）轉為橘色
-let pxBlink = false;
-
 const PX_MSGS_IDLE = [
   '讀書是最棒的冒險 📖',
   '每一頁都是新世界 ✨',
@@ -2954,54 +2924,14 @@ const PX_MSGS_IDLE = [
 ];
 
 let pxBubbleTimer = null;
-let pxBlinkInterval = null;
 
 function initPxChar() {
-  const canvas = document.getElementById('px-char-canvas');
-  if (!canvas) return;
-  const dpr = window.devicePixelRatio || 1;
-  const lw = PX_W * PX_SCALE, lh = PX_H * PX_SCALE;
-  canvas.width = lw * dpr;
-  canvas.height = lh * dpr;
-  canvas.style.width = lw + 'px';
-  canvas.style.height = lh + 'px';
   pxDraw();
-  if (pxBlinkInterval) clearInterval(pxBlinkInterval);
-  // blink pattern: close eyes for 150ms every ~4s
-  pxBlinkInterval = setInterval(() => {
-    pxBlink = true; pxDraw();
-    setTimeout(() => { pxBlink = false; pxDraw(); }, 150);
-  }, 4000);
 }
 
 function pxDraw() {
-  const canvas = document.getElementById('px-char-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
+  // Character is now a GIF (mascot.gif); only handle the lottery-ready glow
   const gs = getGameState();
-  const outfit = gs.outfit || {};
-  // Default: orange octopus body. Outfits override body color.
-  const bodyC = outfit.c2 || '#e8622c';
-  const hlC = outfit.c3 || '#f5a06a';
-  const hpBand = '#1a3abf';  // headphone band always blue
-  const hpPad  = '#e8eeff';  // earcup pad (near-white)
-  // palette: 0=null 1=dark 2=body 3=highlight 4=hp-band 5=hp-pad
-  const pal = [null, '#1a1a1a', bodyC, hlC, hpBand, hpPad];
-  ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  for (let row = 0; row < PX_BODY.length; row++) {
-    for (let col = 0; col < PX_BODY[row].length; col++) {
-      let ci = PX_BODY[row][col];
-      if (!ci) continue;
-      // Blink: replace dark pixels on eye rows with body color (eyes span rows 9-10)
-      if (pxBlink && (row === 9 || row === 10) && ci === 1 && col >= 4 && col <= 15) ci = 2;
-      ctx.fillStyle = pal[ci];
-      ctx.fillRect(col * PX_SCALE * dpr, row * PX_SCALE * dpr, PX_SCALE * dpr, PX_SCALE * dpr);
-    }
-  }
-  // Lottery-ready glow
   const today = new Date().toISOString().slice(0, 10);
   const lotteryReady = gs.lotteryAvailable && gs.lotteryUsedDate !== today;
   document.getElementById('px-char-wrap')?.classList.toggle('lottery-ready', !!lotteryReady);
